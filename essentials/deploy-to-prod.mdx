@@ -1,0 +1,26 @@
+---
+title: 'Deploy to Prod'
+description: 'Step by step guide on deploying your project to production.'
+icon: 'rocket'
+---
+
+1. Create your GitHub repo and push changes&#x20;
+2. Buy a hosting provider. I use [DigitalOcean](https://m.do.co/c/2711f3f9172a) as it has very cheap options and is easily scalable whenever needed
+3. Setup you .env with production keys for [Stripe](features/payments/stripe.md) or [LemonSqueezy](features/payments/lemonsqueezy.md)
+4. Add Payment Webhooks for Prod
+5. Turn off "Test Mode" for Stripe or LemonSqueezy
+
+```
+composer install
+php artisan key:generate
+php artisan migrate
+php artisan make:admin // to create admin user
+npm install
+npm run build
+```
+
+And you are good to go.
+
+Deployment examples via Forge or Envoyer will be provided soon.
+
+If you have any questions about deployment, [contact me](mailto:karakhanyans@gmail.com). I will help you to deliver the project with no additional cost.

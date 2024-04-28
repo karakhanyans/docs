@@ -1,0 +1,119 @@
+---
+title: LemonSqueezy for Non-Auth Users
+description: How to integrate LemonSqueezy for non-auth users in Laravel
+icon: 'lemon'
+---
+
+Laravel LemonSqueezy package default checkouts are made for only registered users, same for webhooks to save orders.&#x20;
+
+To get product payment links and use them for non-auth users, you can use `app/Services/LemonSqueezyService.php` ( Remember to add LemonSqueezyServiceProvider::class to the config/app.php providers list)
+
+LemonSqueezyService uses LemonSqueezyAPI -> [https://docs.lemonsqueezy.com/api](https://docs.lemonsqueezy.com/api)
+
+### Products
+
+To retrieve the products, use the products() method from the Service,
+
+```php
+app(LemonSqueezyService::class)->products();
+```
+
+### Variants
+
+For each product, you can retrieve its own variant by providing the product ID,
+
+```php
+public function variants($productId)
+{
+    return $this->client->get('variants?filter[product_id]='.$productId)->json();
+}
+```
+
+### Products with no variants
+
+If your product does not have any variants, in other words, if it has only one price, in the Product Object attributes you will see "buy\_now\_url" which can be used for checkout.
+
+<Tip>
+To apply the discount code in the checkout URL you can add the following after your URL
+
+`?checkout[discount_code]=YOUR_DISCOUNT_CODE`
+</Tip>
+
+### Products with multiple variants
+
+If the product has multiple variants, to create a checkout URL dynamically use the "checkout" method from the Service. The checkout method accepts variant ID and creates URL.
+
+```php
+public function checkout($variant)
+{
+    return $this->client->post('checkouts', [
+        'data' => [
+            'type' => 'checkouts',
+            'attributes' => [
+                'product_options' => array_filter([
+                    'enabled_variants' => [(string) $variant],
+                ]),
+                'expires_at' => null,
+            ],
+            'relationships' => [
+                'store' => [
+                    'data' => [
+                        'type' => 'stores',
+                        'id' => $this->store,
+                    ],
+                ],
+                'variant' => [
+                    'data' => [
+                        'type' => 'variants',
+                        'id' => (string) $variant,
+                    ],
+                ],
+            ],
+        ],
+    ])->json();
+}
+```
+
+### Example for Single Variant Products
+
+```php
+// Cache products forever, to not do API request on each visit of the page
+// Make sure to clear the cache after each deployment or when something changes in Product data
+
+$products = Cache::rememberForever('lemonsqueezy-products', static fn () => app(LemonSqueezyService::class)->products());
+
+$products = collect($products['data'])
+// exclude non-published
+$products->filter(fn ($product) => $product['attributes']['status'] === 'published')
+    // Sort them by price
+    ->sortByDesc(fn ($product) => $product['attributes']['price'])
+    ->map(function ($product) {
+        $attributes = $product['attributes'];
+        // LemonSqueezy as other payment providers saves price in cents,
+        // so dividing it to 100 to get USD
+        $price = (int) $attributes['price'] / 100;
+
+        $plan = match ($attributes['name']) {
+            'Starter' => 'starter',
+            default => 'unlimited'
+        };
+
+        return [
+            'name' => $attributes['name'],
+            'slug' => $attributes['slug'],
+            'plan' => $plan,
+            'price' => $price,
+            'bestseller' => $plan === 'unlimited',
+            'discounted_price' => $price - 100,
+            'url' => $attributes['buy_now_url'].'?checkout%5Bdiscount_code%5D=LAUNCH10OFF',
+            // I keep all plan features in config files and load them dynamically based on plan slug
+            'features' => config('plans.' . $plan . '.features')
+        ];
+    });
+```
+
+Use `$products` variable in your view files to display pricing tables
+
+<Tip>
+    To read about LemonSqueezy integration for Auth users, check the [LemonSqueezy for Auth Users](/vilt/features/payments/lemonsqueezy) guide.
+</Tip>
