@@ -5,7 +5,7 @@
     "dark": "/logo/larafast-small-white.png",
     "light": "/logo/larafast-small.png"
   },
-  "favicon": "/logo/logo-black.svg",
+  "favicon": "/logo/favicon.svg",
   "colors": {
     "primary": "#0D9373",
     "light": "#07C983",
