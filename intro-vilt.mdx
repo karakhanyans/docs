@@ -34,25 +34,17 @@ composer install
 cp .env.example .env
 ```
 
-<Tip>
-By default DB_CONNECTION is set to SQLite, feel free to change it to MySQL or any preferred DB.
-</Tip>
-
-### Create APP_KEY and Run migrations
-
-To create APP_KEY just run:
+### Create APP_KEY
 
 ```bash
 php artisan key:generate
 ```
 
-Run migrations
+### Run migrations
 
-```bash
-php artisan migrate
-```
-
-The command will ask to create a new SQLite database, chose "Yes" if you want to continue with SQLite.
+<Tip>
+    By default DB_CONNECTION is set to SQLite, feel free to change it to MySQL or any preferred DB.
+</Tip>
 
 To use MySQL as a database, update the .env file with the new database credentials.
 
@@ -63,6 +55,10 @@ DB_PORT=3306
 DB_DATABASE=your_db_name
 DB_USERNAME=root
 DB_PASSWORD=
+```
+
+```bash
+php artisan migrate
 ```
 
 ### Install NPM and Run

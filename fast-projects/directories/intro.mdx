@@ -1,0 +1,117 @@
+---
+title: Start Here
+description: Larafast Directories Documentation
+icon: 'arrow-right'
+---
+
+Welcome to the **Larafast Directories Documentation**
+
+Larafast Directories project made with **Larafast** and uses Laravel Framework v11.x, Laravel Jetstream v5.0, Livewire 3, TailwindCSS and DaisyUI.
+
+<Tip>
+    Haven't gotten Larafast Directories yet? Check here: [https://larafast.com/projects/directories](https://larafast.com/projects/directories)
+</Tip>
+
+<Note>
+    As Directories based on Larafast, for all the available base features check Larafast Main documentation: [https://docs.larafast.com](https://docs.larafast.com)
+</Note>
+## Installation
+
+To install the project you need to open your terminal and type these commands
+
+### Clone repo and install composer
+
+```bash
+git clone https://github.com/karakhanyans-tools/larafast-directories.git [YOUR_PROJECT_NAME]
+cd [YOUR_PROJECT_NAME]
+composer install
+```
+
+### Create .env file
+
+```bash
+cp .env.example .env
+```
+
+### Create APP_KEY just run:
+
+```bash
+php artisan key:generate
+```
+
+### Change admin user details
+
+Open the `database/seeders/AdminSeeder.php` file and update the default admin user details.
+
+```php database/seeders/AdminSeeder.php
+$user = User::create([
+    'name' => 'Admin',
+    'email' => 'admin@example.com',
+    'password' => bcrypt('1111'),
+]);
+
+$user->assignRole('admin');
+````
+
+<Tip>
+If you plan to use different roles, update the `database/seeders/RoleSeeder.php` file.
+</Tip>
+
+### Categories and Products
+
+To modify pre-defined categories and products before running migrations, update the `database/seeders/CategorySeeder.php` and `database/seeders/ProductSeeder.php` files.
+
+<Info>
+    Details about how to manage categories can be found in [Categories](/fast-projects/directories/features/categories) documentation.
+</Info>
+
+### Run migrations
+
+<Tip>
+    By default DB_CONNECTION is set to SQLite, feel free to change it to MySQL or any preferred DB.
+</Tip>
+
+To use MySQL as a database, update the .env file with the new database credentials.
+
+```bash .env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=your_db_name
+DB_USERNAME=root
+DB_PASSWORD=
+```
+
+Run the migrations and seed the database with the following command:
+```bash
+php artisan migrate --seed
+```
+
+or
+
+```bash
+php artisan migrate:fresh --seed
+```
+
+### Install NPM and Run
+
+```bash
+npm install
+npm run dev
+```
+
+### Run Local Server
+
+Laravel comes with a handy artisan serve command to run a local server. Feel free to use Valet or any other local server management tools.
+
+```bash
+php artisan serve
+```
+
+That's it. Visit [http://127.0.0.1:8000/](http://127.0.0.1:8000/) and see your website!
+
+<Warning>
+    Don't forget to remove the starter kit's git configs. To do so: `rm -rf .git` - to init fresh git folder later `git remote remove origin`
+</Warning>
+
+
