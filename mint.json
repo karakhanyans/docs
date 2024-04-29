@@ -22,33 +22,30 @@
     }
   ],
   "topbarCtaButton": {
-    "name": "Demo",
-    "url": "https://demo.larafast.com"
+    "name": "Website",
+    "url": "https://larafast.com"
   },
   "primaryTab": {
-    "name": "VILT Stack"
+    "name": "VILT Stack (Vue)"
   },
   "tabs": [
-    {
-      "name": "TALL Stack (Livewire)",
-      "url": "tall/introduction"
-    }
+
   ],
   "anchors": [
     {
-      "name": "Documentation",
-      "icon": "book-open-cover",
-      "url": "https://mintlify.com/docs"
-    },
-    {
       "name": "Community",
       "icon": "slack",
-      "url": "https://mintlify.com/community"
+      "url": "https://larafastworkspace.slack.com/"
     },
     {
       "name": "Blog",
       "icon": "newspaper",
-      "url": "https://mintlify.com/blog"
+      "url": "https://larafast.com/blog"
+    },
+    {
+      "name": "Newsletter",
+      "icon": "newspaper",
+      "url": "https://serg.beehiiv.com/subscribe"
     }
   ],
   "navigation": [
@@ -61,10 +58,10 @@
     {
       "group": "Tutorials",
       "pages": [
-        "tutorials/lemonsqueezy-for-non-auth-users",
-        "tutorials/stripe-in-5-minutes",
-        "tutorials/up-and-running-in-3-minutes",
-        "tutorials/zero-downtime-deployment-with-laravel-forge"
+        "vilt/tutorials/lemonsqueezy-for-non-auth-users",
+        "vilt/tutorials/stripe-in-5-minutes",
+        "vilt/tutorials/up-and-running-in-3-minutes",
+        "vilt/tutorials/zero-downtime-deployment-with-laravel-forge"
       ]
     },
     {
@@ -116,15 +113,9 @@
       ]
     },
     {
-      "group": "Essentials",
+      "group": "Deployment",
       "pages": [
-        "essentials/deploy-to-prod",
-        "essentials/markdown",
-        "essentials/code",
-        "essentials/images",
-        "essentials/settings",
-        "essentials/navigation",
-        "essentials/reusable-snippets"
+        "deploy/deploy-to-prod"
       ]
     }
   ],

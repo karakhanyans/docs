@@ -1,6 +1,85 @@
 ---
-title: Get Started TALL
-description: Documentation for Larafast
+title: Start Here
+description: Larafast TALL Stack Documentation
+icon: 'arrow-right'
 ---
 
-TALLLLLLLLLLL
+Welcome to the **Larafast TALL Stack Documentation**
+
+**Larafast** uses Laravel Framework v11.x, Laravel Jetstream v5.0, Livewire 3, TailwindCSS and DaisyUI.
+
+<Tip>
+    Haven't gotten Larafast yet? Check here: [https://larafast.com](https://larafast.com)
+</Tip>
+
+## Installation
+
+To install the project you need to open your terminal and type these commands
+
+### Clone repo and install composer
+
+```bash
+git clone https://github.com/karakhanyans-tools/larafast-tall.git [YOUR_PROJECT_NAME]
+cd [YOUR_PROJECT_NAME]
+composer install
+```
+
+### Create .env file
+
+```bash
+cp .env.example .env
+```
+
+<Tip>
+    By default DB_CONNECTION is set to SQLite, feel free to change it to MySQL or any preferred DB.
+</Tip>
+
+### Create APP_KEY and Run migrations
+
+To create APP_KEY just run:
+
+```bash
+php artisan key:generate
+```
+
+Run migrations
+
+```bash
+php artisan migrate
+```
+
+The command will ask to create a new SQLite database, chose "Yes" if you want to continue with SQLite.
+
+To use MySQL as a database, update the .env file with the new database credentials.
+
+```bash .env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=your_db_name
+DB_USERNAME=root
+DB_PASSWORD=
+```
+
+### Install NPM and Run
+
+```bash
+npm install
+npm run dev
+```
+
+### Run Local Server
+
+Laravel comes with a handy artisan serve command to run a local server. Feel free to use Valet or any other local server management tools.
+
+```bash
+php artisan serve
+```
+
+That's it. Visit [http://127.0.0.1:8000/](http://127.0.0.1:8000/) and see your website!
+
+<Warning>
+    Don't forget to remove the starter kit's git configs. To do so: `rm -rf .git` - to init fresh git folder later `git remote remove origin`
+</Warning>
+
+

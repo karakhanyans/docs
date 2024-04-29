@@ -1,0 +1,42 @@
+---
+title: 'SchemaOrg'
+description: 'SchemaOrg setup in LaraFast'
+icon: 'signs-post'
+---
+
+LaraFast comes with SchemaOrg service, which will help to generate ld+json files for Schema.org markup. File: `app/Services/SchemaOrg.php`
+It comes with predefined **Article**, **Organization**, and **Review** methods.
+
+The `article` is already used for Blog articles.
+
+The `organization` is used for the main configurations of the website.
+
+Feel free to add any new types you want.&#x20;
+
+Types are available here: [https://github.com/spatie/schema-org](https://github.com/spatie/schema-org)
+
+### Organization
+
+To set your organization data, update `/lang/en/schema.php` file with your data.
+
+To share organization schema, uncomment `View::share` this line in AppServiceProvider.php
+
+```php AppServiceProvider.php
+/**
+ * Bootstrap any application services.
+ */
+public function boot(): void
+{
+    //
+
+    View::share(['schema' => ['organization' => app(SchemaOrg::class)->organization()]]);
+}
+```
+
+<Tip>
+To validate your Schema.org markup use [https://validator.schema.org/](https://validator.schema.org/)
+</Tip>
+
+### Examples
+
+To update or add more schema.org markups, add them in `/views/schema.blade.php`
