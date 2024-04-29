@@ -25,43 +25,34 @@
     "name": "Website",
     "url": "https://larafast.com"
   },
-  "primaryTab": {
-    "name": "Documentation"
-  },
   "tabs": [
-
+    {
+      "name": "VILT Components",
+      "url": "vilt"
+    },
+    {
+      "name": "TALL Components",
+      "url": "tall"
+    }
   ],
   "anchors": [
-    {
-      "name": "Community",
-      "icon": "slack",
-      "url": "https://larafastworkspace.slack.com/"
-    },
-    {
-      "name": "Blog",
-      "icon": "newspaper",
-      "url": "https://larafast.com/blog"
-    },
-    {
-      "name": "Newsletter",
-      "icon": "newspaper",
-      "url": "https://serg.beehiiv.com/subscribe"
-    }
+
   ],
   "navigation": [
     {
       "group": "Get Started",
       "pages": [
-        "vilt/introduction"
+        "intro-vilt",
+        "intro-tall"
       ]
     },
     {
       "group": "Tutorials",
       "pages": [
-        "vilt/tutorials/lemonsqueezy-for-non-auth-users",
-        "vilt/tutorials/stripe-in-5-minutes",
-        "vilt/tutorials/up-and-running-in-3-minutes",
-        "vilt/tutorials/zero-downtime-deployment-with-laravel-forge"
+        "tutorials/lemonsqueezy-for-non-auth-users",
+        "tutorials/stripe-in-5-minutes",
+        "tutorials/up-and-running-in-3-minutes",
+        "tutorials/zero-downtime-deployment-with-laravel-forge"
       ]
     },
     {
@@ -70,29 +61,29 @@
         {
           "group": "Payments",
           "pages": [
-            "vilt/features/payments/lemonsqueezy",
-            "vilt/features/payments/stripe",
-            "vilt/features/payments/paddle"
+            "features/payments/lemonsqueezy",
+            "features/payments/stripe",
+            "features/payments/paddle"
           ]
         },
-        "vilt/features/admin",
+        "features/admin",
         {
           "group": "SEO",
           "pages": [
-            "vilt/features/seo/introduction",
-            "vilt/features/seo/sitemap",
-            "vilt/features/seo/schemaorg"
+            "features/seo/introduction",
+            "features/seo/sitemap",
+            "features/seo/schemaorg"
           ]
         },
-        "vilt/features/blog",
-        "vilt/features/users",
-        "vilt/features/social-auth",
-        "vilt/features/magic-links",
-        "vilt/features/database"
+        "features/blog",
+        "features/users",
+        "features/social-auth",
+        "features/magic-links",
+        "features/database"
       ]
     },
     {
-      "group": "Components",
+      "group": "VILT Components",
       "pages": [
         "vilt/components/themes-and-ui",
         "vilt/components/header",
@@ -110,6 +101,27 @@
         "vilt/components/coming-soon",
         "vilt/components/terms-and-privacy",
         "vilt/components/other"
+      ]
+    },
+    {
+      "group": "TALL Components",
+      "pages": [
+        "tall/components/themes-and-ui",
+        "tall/components/header",
+        "tall/components/hero",
+        "tall/components/partners",
+        "tall/components/features",
+        "tall/components/content-with-image",
+        "tall/components/plans",
+        "tall/components/testimonials",
+        "tall/components/faq",
+        "tall/components/cta",
+        "tall/components/footer",
+        "tall/components/blog",
+        "tall/components/buttons",
+        "tall/components/coming-soon",
+        "tall/components/terms-and-privacy",
+        "tall/components/other"
       ]
     },
     {
