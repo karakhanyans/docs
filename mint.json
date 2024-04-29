@@ -133,10 +133,21 @@
       "pages": [
         "fast-projects/directories/intro"
       ]
-    },    {
+    },
+    {
       "group": "Features",
       "pages": [
-        "fast-projects/directories/features/categories"
+        "fast-projects/directories/features/admin",
+        "fast-projects/directories/features/categories",
+        "fast-projects/directories/features/products",
+        "fast-projects/directories/features/plans",
+        "fast-projects/directories/features/auth"
+      ]
+    },
+    {
+      "group": "Demo",
+      "pages": [
+        "fast-projects/directories/features/demo"
       ]
     },
     {

@@ -12,7 +12,11 @@ For initial setup, you can add categories in `database/seeders/CategorySeeder.ph
 
 If you already run `php artisan migrate --seed` command, you can manage categories from the admin panel.
 
-If you want to refresh the categories, you can run `php artisan migrate:fresh --seed` command which will reset the database and add the categories from the seeder file.
+If you want to refresh the categories, you can run `php artisan migrate:fresh --seed`
+
+<Warning>
+    This command will reset the database and add the categories from the seeder file.
+</Warning>
 
 ```php database/seeders/CategorySeeder.php
 <?php
@@ -44,3 +48,8 @@ class CategorySeeder extends Seeder
 ### From Admin Panel
 
 In the admin panel `/admin/categories` you can manage categories. You can add, edit, delete, and add new categories from the admin panel.
+
+<Frame>
+    <img src="/images/directories/categories.jpg" />
+</Frame>
+

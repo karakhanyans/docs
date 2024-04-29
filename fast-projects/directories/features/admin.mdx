@@ -1,0 +1,50 @@
+---
+title: Admin Dashboard
+sidebarTitle: Admin
+description: Admin dashboard for managing categories, listings, sales, etc.
+icon: 'users'
+---
+
+Admin Dashboard comes with a built-in admin panel where you can manage categories, listings, subscriptions/orders, users, etc.
+
+<Frame>
+    <img src="/images/directories/admin.jpg" />
+</Frame>
+
+<Info>
+    Larafast Directories Admin dashboard is powered by <a href="https://filamentphp.com/docs/3.x/panels/installation" target="_blank">Filament</a>.
+    It can be easily extended with components from their docs.
+</Info>
+
+### Accessing Admin Panel
+
+For initial setup, change the admin email and password in `database/seeders/AdminSeeder.php`
+file and run the seeder command to add to the database.
+
+```bash
+php artisan db:seed --class=AdminSeeder
+```
+
+```php database/seeders/AdminSeeder.php
+<?php
+...
+class AdminSeeder extends Seeder
+{
+    public function run(): void
+    {
+        $user = User::create([
+            'name' => 'Admin',
+            'email' => 'admin@example.com',
+            'password' => bcrypt('1111'),
+        ]);
+
+        $user->assignRole('admin');
+    }
+}
+```
+
+Now you can access the admin panel by visiting `/admin` route in your browser.
+
+### Adding new admin users from terminal
+
+To add new admin users, use the `php artisan make:admin` command and add name, email and password in the prompt.

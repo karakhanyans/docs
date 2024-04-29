@@ -1,0 +1,36 @@
+---
+title: User Auth
+description: Magic Links and Verification Codes
+icon: 'user-shield'
+---
+
+## Registration
+
+To keep users registration simple and secure, I have implemented two ways of registration:
+
+- Verification Code (only email needed)
+- Google Auth
+
+#### Verification Code
+
+When user registers with verification code, he will receive an email with a verification code that he needs to enter in the registration form.
+
+#### Google Auth
+
+When user registers with Google Auth, he will be redirected to Google's login page where he can login with his Google account.
+
+<Tip>
+Check out the [Google Auth](/features/social-auth#google) docs for more details on how to setup Google Auth.
+</Tip>
+
+## Login
+
+User can login with Magic Link or with Google Auth.
+
+#### Magic Link
+
+When user logs in with Magic Link, he will receive an email with a magic link that he needs to click to login.
+
+#### Google Auth
+
+When user logs in with Google Auth, he will be redirected to Google's login page where he can login with his Google account.
