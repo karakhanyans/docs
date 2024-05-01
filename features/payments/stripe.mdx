@@ -10,7 +10,7 @@ icon: 'stripe'
 
 ### Setup API Keys
 
-To connect Stripe to the LaraFast project you need to set API keys.&#x20;
+To connect Stripe to the Larafast project you need to set API keys.&#x20;
 
 1. Copy Publishable and Secret Keys from [Developers->API Keys](https://dashboard.stripe.com/apikeys)
 2. In your .env file replace the following keys
@@ -88,7 +88,7 @@ Route::get('product-checkout/{price}', [StripeController::class, 'productCheckou
 
 ### Stripe URL's
 
-LaraFast comes with stripe subscription and product checkout URLs, which you can find in **routes/web.php**
+Larafast comes with stripe subscription and product checkout URLs, which you can find in **routes/web.php**
 
 ```php web.php
 Route::prefix('stripe')->name('stripe.')->group(function () {
