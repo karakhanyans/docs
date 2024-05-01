@@ -1,11 +1,11 @@
 ---
 title: FAQ
-description: import Faq from @/Components/Faq.vue;
+description: FAQ component doc
 ---
 
 FAQ to answer most common user questions
 
-```html resources/js/Components/Faq.vue
+```html resources/views/livewire/faq.blade.php
 <div class="py-8 sm:py-16 px-8">
     <div class="mx-auto max-w-7xl px-6 lg:px-8">
         <div class="mx-auto max-w-2xl lg:text-center">
@@ -15,16 +15,19 @@ FAQ to answer most common user questions
     </div>
     <div class="mx-auto max-w-3xl mt-8">
         <div class="join join-vertical w-full">
-            <div v-for="(faq, index) in faqs" :key="index"
-                 class="collapse collapse-arrow join-item border border-base-300">
-                <input type="radio" :id="'faq-' + index" name="my-accordion" :checked="selectedFaq === index"/>
-                <div class="collapse-title text-xl font-medium" @click="toggleFaq(index)">
-                    {{ faq.title }}
+            @foreach($faqs as $key => $faq)
+                <div wire:key="{{ $key }}"
+                     wire:click="toggleFaq({{$key}})"
+                     class="collapse collapse-arrow join-item border border-base-300">
+                    <input type="radio" id="'faq-'{{ $key }}" name="my-accordion" {{ $selectedFaq === $key ? 'checked' : '' }}/>
+                    <div class="collapse-title text-xl font-medium">
+                        {{ $faq['title'] }}
+                    </div>
+                    <div class="collapse-content">
+                        <p>{{ $faq['content'] }}</p>
+                    </div>
                 </div>
-                <div class="collapse-content" v-show="selectedFaq === index">
-                    <p>{{ faq.content }}</p>
-                </div>
-            </div>
+            @endforeach
         </div>
     </div>
 </div>

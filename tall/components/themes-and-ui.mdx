@@ -1,9 +1,9 @@
 ---
 title: Themes and UI
-description: Larafast VILT stack uses Vue, TailwindCSS and DaisyUI. Feel free to modify, add and use any components from DaisyUI or TailwindCSS.
+description: Larafast TALL stack Themes and UI
 ---
 
-Larafast uses Vue, [TailwindCSS](https://tailwindcss.com/) and [DaisyUI](https://daisyui.com/). Feel free to modify, add and use any components from DaisyUI or TailwindCSS.&#x20;
+Larafast uses [Livewire](https://livewire.laravel.com/), [TailwindCSS](https://tailwindcss.com/) and [DaisyUI](https://daisyui.com/). Feel free to modify, add and use any components from DaisyUI or TailwindCSS.&#x20;
 
 DaisyUI supports 32 themes, which are pre-installed out of the box, to read more about themes check here: [https://daisyui.com/docs/themes/](https://daisyui.com/docs/themes/)
 
@@ -13,11 +13,8 @@ To modify theme, add data-theme="...themename..." to `resources/views/app.blade.
 <html data-theme="light" class="scroll-smooth">
 ```
 
-All the components are located in `/recources/js`... folder.
+All the components are located in `/recources/views/liveview`... folder and their respective class file in `/app/Livewire`... folder.
 
-To create a new Page add it to the `resources/js/Pages` folder.
+To create a new Page add it to the `resources/views/pages` folder.
 
-To create a new Component add it to the `resources/js/Components` folder.
-
-[//]: # (<figure><img src="../.gitbook/assets/CleanShot 2024-02-18 at 09.56.33@2x &#40;1&#41;.png" alt=""><figcaption></figcaption></figure>)
-
+To create a new Component add it to the `resources/views/components` folder or if it's a Livewire component use `php artisan make:livewire ComponentName` command.
