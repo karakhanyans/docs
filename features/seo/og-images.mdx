@@ -1,0 +1,80 @@
+---
+title: 'Dynamic OG Images'
+sidebarTitle: 'Dynamic OG Images [new]'
+description: 'How to create Dynamic OG Images for your Larafast application'
+icon: 'image'
+---
+
+Dynamic open graph images are images that are generated on the fly based on the content of the page. This is useful for sharing on social media platforms like Facebook, Twitter, LinkedIn, etc.
+
+## Requirements
+
+Dynamic OG Images based on `spatie/browsershot` package and `puppeteer` package. You need to install these packages first.
+(You can skip this step if you already installed these packages, packages included in Larafast by default)
+
+```bash
+composer require spatie/browsershot
+composer require spatie/image
+npm install puppeteer
+```
+<Tip>
+    Check the official Spatie docs for requirements: https://spatie.be/docs/browsershot/v4/requirements
+</Tip>
+
+## Configuration
+
+Modify the `resources/views/seo/image.blade.php` file to create your own dynamic OG Image template.
+
+## Usage
+
+To have your og image generated dynamically, you need to use following route:
+
+```php
+route('og-image', ['title' => 'Your Title', 'description' => 'Description'])
+```
+
+This will generate an image with `your-title.jpg` file name. If the file already exists, it will not generate a new image.
+
+### Example
+
+```php
+<meta name="og:image" content="{{ route('og-image', ['title' => 'Your Title', 'description' => 'Description']) }}">
+```
+
+or if you are using `@include('seo')` in your layout file, you can use the following inside controllers:
+
+```php
+return Inertia::render('Blog', [
+            ...
+            'seo' => [
+                'title' => 'Blog',
+                'description' => 'Blog Description',
+                'image' => route('og-image', ['title' => 'Blog', 'description' => 'Blog Description']),
+            ],
+        ]);
+```
+
+<Tip>
+    Dynamic OG image can be used also as an article images, just use the same route instead of image icon
+</Tip>
+
+## Digging deeper
+
+The first load of dynamic og image will be slow, as it will be generated on the fly. After that, generated image will be picked instead of creating new one.
+
+### Articles or other models with image
+
+For every new article that you create or update, og image will be generated automatically. The logic handled in `app/Observers/ArticleObserver.php` file.
+
+If you have existing articles, or if you modified the template and want to regenerated model og images, you can use the following command:
+
+```bash
+php artisan generate:og-images
+```
+
+It will overwrite existing images with new ones or create the ones that are missing.
+
+<Tip>
+    If you have other models with images, you can create your own observer and use the same logic to generate og images for them.
+    Make sure to update the `generate:og-images` command to include your models.
+</Tip>

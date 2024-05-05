@@ -75,6 +75,7 @@
           "group": "SEO",
           "pages": [
             "features/seo/introduction",
+            "features/seo/og-images",
             "features/seo/sitemap",
             "features/seo/schemaorg"
           ]
