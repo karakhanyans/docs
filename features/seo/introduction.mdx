@@ -1,11 +1,53 @@
 ---
 title: 'SEO'
+sidebarTitle: 'SEO [updated]'
 description: 'SEO setup in Larafast'
 icon: 'magnifying-glass'
 ---
 
-## Setup
+## Setup for VILT stack [from May 5, 2024] (Can be used for TALL stack too)
 
+All default SEO metatags are located in `resources/views/seo/metatags.blade.php` file.
+
+In `resources/views/app.blade.php` file you can find <br/> `@include('seo.metatags', ['seo' => $page['props']['seo'] ?? null])` which includes the metatags file into the layout file.
+
+If you want to add SEO metatags to a specific page, you should add `seo` key to the page's data array and pass the metatags array to it.
+
+Example on `BlogController.php`:
+
+```php BlogController.php
+<?php
+
+...
+class BlogController extends Controller
+{
+   ...
+    public function article(Article $article): \Inertia\Response
+    {
+        ...
+        return Inertia::render('Article', [
+            'article' => $article->load('user'),
+            'seo' => [
+                'title' => $article->seo_title ?? $article->title,
+                'description' => $article->seo_description ?? Str::limit($article->content, 160),
+                'canonical' => route('blog.article', ['article' => $article]),
+            ],
+        ]);
+    }
+}
+```
+
+<Warning>
+    If you bought Larafast VILT stack before May 5, 2024, you can do following to update the SEO setup:
+</Warning>
+
+1. Remove all meta tags from `resources/views/app.blade.php` file.
+2. Add the following code inside the `<head>` component in `resources/views/app.blade.php` file: `@include('seo.metatags', ['seo' => $page['props']['seo'] ?? null])`
+3. Remove `<Head title="..."> ...` from `resources/js/Layouts/HomeLayout.vue` file.
+4. Remove `<Seo title="..." description="..."> ...` from `resources/js/Pages/Article.vue` and `resources/js/Pages/Blog.vue` file and from everywhere you have added.
+5. Follow the documentation above to add SEO metatags to your pages.
+
+## Setup for VILT stack [old, not recommended as the dynamic og images are not working properly]
 Use `resources/js/Components/Seo.vue wrapper component to add SEO tags in your pages.
 
 Or, alternatively use Inertia's `<Head>` component, which adds meta tags to the `<head>`.
