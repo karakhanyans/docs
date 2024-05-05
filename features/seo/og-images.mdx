@@ -58,6 +58,10 @@ return Inertia::render('Blog', [
     Dynamic OG image can be used also as an article images, just use the same route instead of image icon
 </Tip>
 
+<Note>
+    If you need to reset your open graph images cache in Twitter use https://cards-dev.twitter.com/validator or add ?v1=true after your url for which you want to reset it
+</Note>
+
 ## Digging deeper
 
 The first load of dynamic og image will be slow, as it will be generated on the fly. After that, generated image will be picked instead of creating new one.
