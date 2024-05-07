@@ -95,6 +95,8 @@
         "vilt/components/hero",
         "vilt/components/partners",
         "vilt/components/features",
+        "vilt/components/features-list",
+        "vilt/components/about",
         "vilt/components/content-with-image",
         "vilt/components/plans",
         "vilt/components/testimonials",

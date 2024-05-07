@@ -6,61 +6,60 @@ description: import Features from @/components/Features.vue;
 The `Features` component is designed to showcase a set of features in a visually appealing manner. It includes a title, a brief description, and a list of features with accompanying icons. The component has a responsive layout, making it suitable for various screen sizes.
 
 <Frame>
-    <img src="/images/components/features.jpg" />
+    <img src="/images/components/feature-items.jpg" />
 </Frame>
 
 To use the `Features` component in your Vue.js application, you can import it and include it in your template.
 
 ```html resources/js/Components/Features.vue
-<div class="py-24 sm:py-32">
-    <div class="mx-auto max-w-7xl px-6 lg:px-8">
-        <div class="mx-auto max-w-2xl sm:text-center">
-            <h2 class="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">Features Title</h2>
-            <p class="mt-6 text-lg leading-8 text-gray-600">Features Description</p>
+<div class="max-w-4xl mx-auto sm:py-8 sm:pt-0">
+        <div class="mb-12 max-w-2xl text-center mx-auto px-4 sm:px-0">
+            <Heading>
+                Your catchy title goes here
+            </Heading>
+            <p class="mt-2 text-md leading-6">
+                Your catchy description goes here
+            </p>
         </div>
-        <div class="mx-auto mt-16 max-w-2xl rounded-3xl ring-1 ring-gray-200 sm:mt-20 lg:mx-0 lg:flex lg:max-w-none">
-            <div class="p-8 sm:p-10 lg:flex-auto">
-                <h3 class="text-2xl font-bold tracking-tight text-gray-900">What's inside?</h3>
-                <p class="mt-6 text-base leading-7 text-gray-600">Lorem ipsum dolor sit amet consect etur adipisicing elit. Itaque amet indis perferendis blanditiis repellendus etur quidem assumenda.</p>
-                <div class="mt-10 flex items-center gap-x-4">
-                    <h4 class="flex-none text-sm font-semibold leading-6 text-indigo-600">What’s included</h4>
-                    <div class="h-px flex-auto bg-gray-100"></div>
-                </div>
-                <ul role="list" class="mt-8 grid grid-cols-1 gap-4 text-sm leading-6 text-gray-600 sm:grid-cols-2 sm:gap-6">
-                    <li class="flex gap-x-3">
-                        <svg class="h-6 w-5 flex-none text-indigo-600" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                            <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
-                        </svg>
-                        Private forum access
-                    </li>
-                    <li class="flex gap-x-3">
-                        <svg class="h-6 w-5 flex-none text-indigo-600" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                            <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
-                        </svg>
-                        Member resources
-                    </li>
-                    <li class="flex gap-x-3">
-                        <svg class="h-6 w-5 flex-none text-indigo-600" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                            <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
-                        </svg>
-                        Entry to annual conference
-                    </li>
-                    <li class="flex gap-x-3">
-                        <svg class="h-6 w-5 flex-none text-indigo-600" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                            <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
-                        </svg>
-                        Official member t-shirt
-                    </li>
-                </ul>
-            </div>
-            <div class="-mt-2 p-2 lg:mt-0 lg:w-full lg:max-w-md lg:flex-shrink-0">
-                <div class="rounded-2xl bg-gray-50 py-10 text-center ring-1 ring-inset ring-gray-900/5 lg:flex lg:flex-col lg:justify-center lg:py-16">
-                    <div class="mx-auto max-w-xs px-8">
-                        <img src="/images/content.jpg" alt="">
-                    </div>
+        <!-- The tabs section-->
+        <div role="tablist" class="tabs tabs-bordered overflow-y-scroll">
+            <div class="tab h-24 w-24 sm:w-full sm:h-20" v-for="(tab) in tabs" role="tab" @click="switchTab(tab)" :class="{'tab-active': tab.slug === activeTab.slug}">
+                <div class="flex flex-col justify-start items-center">
+                    <CreditCardIcon v-if="tab.slug === 'payments'" :class="{'text-secondary': activeTab.slug === 'payments'}" class="w-8 h-8"/>
+                    <UsersIcon v-if="tab.slug === 'auth'" :class="{'text-secondary': activeTab.slug === 'auth'}" class="w-8 h-8"/>
+                    <UserIcon v-if="tab.slug === 'admin'" :class="{'text-secondary': activeTab.slug === 'admin'}" class="w-8 h-8"/>
+                    <DocumentMagnifyingGlassIcon v-if="tab.slug === 'seo'" :class="{'text-secondary': activeTab.slug === 'seo'}" class="w-8 h-8"/>
+                    <PaintBrushIcon v-if="tab.slug === 'themes'" :class="{'text-secondary': activeTab.slug === 'themes'}" class="w-8 h-8"/>
+                    <DocumentTextIcon v-if="tab.slug === 'blog'" :class="{'text-secondary': activeTab.slug === 'blog'}" class="w-8 h-8"/>
+                    <EllipsisHorizontalIcon v-if="tab.slug === 'more'" :class="{'text-secondary': activeTab.slug === 'more'}" class="w-8 h-8"/>
+                    <span class="block font-bold" :class="{'text-secondary': tab.slug === activeTab.slug}">{{ tab.title }}</span>
                 </div>
             </div>
         </div>
+        <!-- The feature items section-->
+        <FeatureItems :activeTab="activeTab"/>
     </div>
-</div>
 ```
+
+Component also has js methods that are responsible for switching tabs and displaying the appropriate content.
+
+```js resources/js/Components/Features.vue
+
+const activeTab = ref({title: 'Payments', slug: 'payments'});
+
+const tabs = [
+    {title: 'Payments', slug: 'payments'},
+    {title: 'Auth', slug: 'auth'},
+    {title: 'Admin', slug: 'admin'},
+    {title: 'SEO', slug: 'seo'},
+    {title: 'Blog', slug: 'blog'},
+    {title: 'Themes (30+)', slug: 'themes'},
+    {title: '... and more', slug: 'more'}
+];
+
+const switchTab = (tab) => {
+    activeTab.value = tab;
+}
+```
+
+To display the active tab content, you can use the `FeatureItems` component, which accepts the `activeTab` prop.
