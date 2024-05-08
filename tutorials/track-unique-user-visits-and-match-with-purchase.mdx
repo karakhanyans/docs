@@ -1,0 +1,263 @@
+---
+title: Track Unique User Visits and Match with Purchases
+description: How to Track Unique User Visits and Match with Purchases in Laravel
+icon: 'shuffle'
+---
+
+It's very important to understand from where users visiting the website and which visits turned into purchase from users.
+
+In this tutorial I will show you how I track users unique visits and match them with their purchases when you don't have auth users.
+
+## Model and Migrations
+
+Let's create a model and migrations first, to store our traffic data.
+
+```bash
+php artisan make:model Traffic -m
+```
+
+Add necessary columns to traffic migration file.
+
+```php
+public function up(): void
+{
+    Schema::create('traffic', function (Blueprint $table) {
+        $table->id();
+        $table->ipAddress('ip');
+        $table->string('uuid')->nullable();
+        $table->string('url')->nullable();
+        $table->string('ref')->nullable();
+        $table->string('referer')->nullable();
+        $table->string('utm_medium')->nullable();
+        $table->string('utm_source')->after('utm_medium')->nullable();
+        $table->string('utm_campaign')->after('utm_medium')->nullable();
+        $table->json('data')->nullable();
+        $table->timestamps();
+    });
+}
+```
+
+If you need to track more query params, feel free to add other columns here.
+
+
+In the `App\Models\Traffic.php` cast the "data" to "json" or "array". In the data column we will store all request params, in case if some of them were not listed separately, to have everything collected.
+
+
+```
+protected $casts = ['data' => 'json'];
+```
+
+## Columns explained
+
+- `url` we will store the current page url without query params.
+- `ref`, `utm_medium`, `utm_source`, `utm_campaign` columns will contain the values from the eponymous query params.
+- `referer` - we will store HTTP_REFERER to know from which website user came
+- `data` column will contain an array of all query params from the url.
+- `uuid` column will be the unique identifier for the user, will talk about it more below
+
+
+## Middleware
+
+To track the params on user's each page visit, we will use a Middleware for that.
+
+```bash
+php artisan make:middleware TrafficMiddleware
+```
+
+### Register your TrafficMiddleware
+
+**For Laravel 11**
+
+Add TrafficMiddleware::class to your `bootstrap/app.php` file
+
+```php bootstrap/app.php
+return Application::configure(basePath: dirname(__DIR__))
+    ->withRouting(
+        ...
+    )
+    ->withMiddleware(function (Middleware $middleware) {
+        ...
+        $middleware->web([
+            TrafficMiddleware::class
+        ])
+    })
+    ->withExceptions(function (Exceptions $exceptions) {
+        ...
+    })->create();
+```
+
+**For Laravel 10**
+
+Add TrafficMiddleware::class to your `app/Http/Kernel.php` file's web middleware group
+
+```php app/Http/Kernel.php
+protected $middlewareGroups = [
+        ...
+        'web' => [
+            ...
+            TrafficMiddleware::class,
+        ],
+]
+```
+
+
+### TrafficMiddleware
+
+
+As we do not have auth users, we should somehow identify unique users for visits. For that we will use `uuid` and store it in session.
+I prefer to store it for 30 days, as users do not buy immediately, we still want to know from where they visited website for the first time.
+Feel free to change that to any days you want.
+
+```php TrafficMiddleware.php
+if (request()->hasCookie('uuid')) {
+    $uuid = request()->cookie('uuid');
+} else {
+    $uuid = Str::uuid()->toString();
+    Cookie::queue('uuid', $uuid, 60 * 24 * 30);
+}
+
+Traffic::create([
+    'ip' => $request->ip(),
+    'uuid' => $uuid,
+    'url' => Str::before($request->getRequestUri(), '?'),
+    'ref' => $request->get('ref') ?? $request->get('referrer'),
+    'utm_medium' => $request->get('utm_medium'),
+    'utm_source' => $request->get('utm_source'),
+    'utm_campaign' => $request->get('utm_campaign'),
+    'referer' => Str::before($request->server('HTTP_REFERER'), '?'),
+    'data' => $request->all(),
+]);
+```
+
+Feel free to exclude any uri's that you don't want to store.
+
+Full code for middleware. I cover it in try/catch in case something goes wrong, to not interrupt users visits.
+
+```php TrafficMiddleware.php
+<?php
+
+namespace App\Http\Middleware;
+
+use App\Models\Traffic;
+use Closure;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cookie;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\Response;
+
+class TrafficMiddleware
+{
+    /**
+     * Handle an incoming request.
+     *
+     * @param  \Closure(Request): (Response)  $next
+     */
+    public function handle(Request $request, Closure $next): Response
+    {
+        try {
+            if (! Str::contains($request->getRequestUri(), [
+                '/admin',
+                '/livewire',
+                '/lemon-squeezy',
+                '/api',
+            ])) {
+
+                if (request()->hasCookie('uuid')) {
+                    $uuid = request()->cookie('uuid');
+                } else {
+                    $uuid = Str::uuid()->toString();
+                    Cookie::queue('uuid', $uuid, 60 * 24 * 30);
+                }
+
+                Traffic::create([
+                    'ip' => $request->ip(),
+                    'uuid' => $uuid,
+                    'url' => Str::before($request->getRequestUri(), '?'),
+                    'ref' => $request->get('ref') ?? $request->get('referrer'),
+                    'utm_medium' => $request->get('utm_medium'),
+                    'utm_source' => $request->get('utm_source'),
+                    'utm_campaign' => $request->get('utm_campaign'),
+                    'referer' => Str::before($request->server('HTTP_REFERER'), '?'),
+                    'data' => $request->all(),
+                ]);
+            }
+
+        } catch (\Exception $exception) {
+            Log::error($exception);
+        }
+
+        return $next($request);
+    }
+}
+```
+
+## Match visit with purchase
+
+<Tip>
+    This example is made for LemonSqueezy orders, but can be used with any other payments provider.
+</Tip>
+
+When user makes a purchase, we need to match the purchase with the visit. For that we will use the `uuid` that we stored in session.
+
+LemonSqueezy checkout url accepts custom params, so we will pass the `uuid` to the checkout url and LemonSqueezy will return it back to us in the webhook.
+
+### Add uuid to the checkout url
+
+In your plans section, get the `uuid` from session and pass to the checkout url.
+
+```php
+$uuid = request()->cookie('uuid');
+
+$attributes['buy_now_url'] . '?checkout[custom][uuid]=' . $uuid;
+```
+
+<Tip>
+To learn more about LemonSqueezy for Non-Auth Users check out the tutorial [here](/tutorials/lemonsqueezy-for-non-auth-users)
+</Tip>
+
+<Warning>
+    For Vue users, to be sure that cookie is available for the first visit, create a new route to get the uuid from the cookie and do async request to get the uuid.
+
+```js
+const uuid = ref(null);
+
+const getUuid = async () => {
+    await axios.get("/api/uuid").then((response) => {
+        uuid.value = response.data.uuid;
+    });
+}
+
+onMounted(() => {
+    getUuid();
+});
+```
+</Warning>
+
+To connect our purchase with the visit, we will store the `uuid` in the lemon_squeezy_orders table.
+
+Add new column to the `lemon_squeezy_orders` table.
+
+```php
+public function up(): void
+{
+    Schema::table('lemon_squeezy_orders', function (Blueprint $table) {
+        $table->uuid('uuid')->after('id')->nullable();
+    });
+}
+```
+
+Inside the **WebhookController**, we will match the purchase with the visit. (check [LemonSqueezy Webhooks for Non-Auth Users](tutorials/lemonsqueezy-webhooks-for-non-auth-users) for more details)
+
+Add the `uuid` to the order.
+
+```php
+...
+(new LemonSqueezy::$orderModel)->create([
+    ...
+    'uuid' => $payload['meta']['custom_data']['uuid'],
+    ...
+...
+```
+
+That's it! Now you can track your users visits and match them with their purchases.

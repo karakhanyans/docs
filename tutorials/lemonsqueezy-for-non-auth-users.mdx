@@ -1,10 +1,16 @@
 ---
-title: LemonSqueezy for Non-Auth Users
+title: LemonSqueezy for Non-Auth Users in Laravel
+sidebarTitle: LemonSqueezy for Non-Auth Users
 description: How to integrate LemonSqueezy for non-auth users in Laravel
 icon: 'lemon'
 ---
 
-Laravel LemonSqueezy package default checkouts are made for only registered users, same for webhooks to save orders.&#x20;
+[Laravel LemonSqueezy](https://github.com/lmsqueezy/laravel) package default checkouts are made for only registered users, same for webhooks to save orders.
+But you can use LemonSqueezy API to create checkouts for non-auth users and save orders in your database.;
+
+<Note>
+    Check the [LemonSqueezy Webhooks for Non-Auth Users](/tutorials/lemonsqueezy-webhooks-for-non-auth-users) guide for Non-Auth users integration.
+</Note>
 
 To get product payment links and use them for non-auth users, you can use `app/Services/LemonSqueezyService.php` ( Remember to add LemonSqueezyServiceProvider::class to the config/app.php providers list)
 

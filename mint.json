@@ -54,6 +54,8 @@
       "group": "Tutorials",
       "pages": [
         "tutorials/lemonsqueezy-for-non-auth-users",
+        "tutorials/lemonsqueezy-webhooks-for-non-auth-users",
+        "tutorials/track-unique-user-visits-and-match-with-purchase",
         "tutorials/stripe-in-5-minutes",
         "tutorials/up-and-running-in-3-minutes",
         "tutorials/zero-downtime-deployment-with-laravel-forge"

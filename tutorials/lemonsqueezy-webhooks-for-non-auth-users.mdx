@@ -1,0 +1,150 @@
+---
+title: LemonSqueezy Webhooks for Non-Auth Users in Laravel
+sidebarTitle: LemonSqueezy Webhooks for Non-Auth Users
+description: How to handle LemonSqueezy Webhooks for non-auth users in Laravel
+icon: 'lemon'
+---
+
+[Laravel LemonSqueezy](https://github.com/lmsqueezy/laravel) package default webhooks are using billable model to store the orders in the database.
+But what if you want to handle webhooks for non-auth users?
+
+In this article, we will see how to handle LemonSqueezy webhooks for non-auth users in Laravel.
+
+## Step 1: Install LemonSqueezy
+
+First, you need to install the LemonSqueezy package in your Laravel application.
+
+```bash
+composer require lmsqueezy/laravel
+```
+
+Check the all installation steps in the [official documentation](https://github.com/lmsqueezy/laravel)
+
+## Step 2: Change the billable columns to nullable in lemon_squeezy_orders table
+
+In this example we are using the `orders` table to store the orders for non-auth users.
+
+```php
+Schema::table('lemon_squeezy_orders', function (Blueprint $table) {
+    $table->unsignedBigInteger('billable_id')->nullable()->change();
+    $table->string('billable_type')->nullable()->change();
+    $table->string('customer_id')->nullable()->change();
+
+    $table->dropIndex(['billable_id', 'billable_type']);
+});
+```
+
+Or modify them in main migration file after publishing them
+
+```bash
+php artisan vendor:publish --tag="lemon-squeezy-migrations"
+```
+
+I also track user name and emails from lemon squeezy orders, so I added these columns to the `lemon_squeezy_orders` table.
+
+```php
+Schema::table('lemon_squeezy_orders', function (Blueprint $table) {
+    $table->string('user_email')->nullable();
+    $table->string('user_name')->nullable();
+});
+```
+
+## Step 3: Create a new route for webhooks
+
+As default LemonSqueezy webhooks are using the `billable` model to store the orders in the database we need to create a new route for webhooks.
+
+Create a new controller `WebhookController`
+
+```bash
+php artisan make:controller Webhooks/WebhookController --invoke
+```
+
+Create a new route for LemonSqueezy webhooks in your `routes/web.php` file.
+
+```php
+use App\Http\Controllers\Webhooks\WebhookController;
+
+Route::post('lemon-squeezy/webhook', WebhookController::class);
+```
+
+## Step 4: Copy from LemonSqueezy WebhookController
+
+Open `vendor/lemonsqueezy/laravel/src/Http/Controllers/WebhookController.php` file and copy the __construct(), __invoke() and handleOrderCreated() methods to your `WebhookController`.
+
+<Tip>
+You can extend your controller with LemonSqueezy Webhook Controller for the other methods if you don't need modifications there
+</Tip>
+
+For our case we need to modify our handleOrderCreated() method to store the orders for non-auth users.
+
+Instead of `$billable->orders()` we will use `LemonSqueezy::$orderModel` to create the order in our database
+
+Remove `'customer_id' => $attributes['customer_id'],` from the `$order` array as we are not using the `billable` model.
+
+Add user_email and user_name to the `$order` array.
+
+```php
+public function handleOrderCreated(array $payload): void
+{
+    if (Schema::hasTable((new LemonSqueezy::$orderModel)->getTable())) {
+        $attributes = $payload['data']['attributes'];
+
+        $order = (new LemonSqueezy::$orderModel)->create([
+            'lemon_squeezy_id' => $payload['data']['id'],
+            'user_email' => $attributes['user_email'],
+            'user_name' => $attributes['user_name'],
+            'product_id' => $attributes['first_order_item']['product_id'],
+            'variant_id' => $attributes['first_order_item']['variant_id'],
+            'identifier' => $attributes['identifier'],
+            'order_number' => $attributes['order_number'],
+            'currency' => $attributes['currency'],
+            'subtotal' => $attributes['subtotal'],
+            'discount_total' => $attributes['discount_total'],
+            'tax' => $attributes['tax'],
+            'total' => $attributes['total'],
+            'tax_name' => $attributes['tax_name'],
+            'status' => $attributes['status'],
+            'receipt_url' => $attributes['urls']['receipt'] ?? null,
+            'refunded' => $attributes['refunded'],
+            'refunded_at' => $attributes['refunded_at'] ? Carbon::make($attributes['refunded_at']) : null,
+            'ordered_at' => Carbon::make($attributes['created_at']),
+        ]);
+    } else {
+        $order = null;
+    }
+}
+```
+
+## Event Listener
+
+Remove `OrderCreated::dispatch($billable, $order, $payload)` as we are not using the `billable` model.
+
+<Tip>
+    Instead of OrderCreated event you can listen for `WebhookHandled` event in your application.
+</Tip>
+
+Add  LemonSqueezyEventListener if you need to do additional actions after the order is created.
+For example you can send a welcome email with the steps how to use your app when user makes the order.
+
+```php
+<?php
+
+namespace App\Listeners;
+
+...
+use LemonSqueezy\Laravel\Events\WebhookHandled;
+
+class LemonSqueezyEventListener
+{
+    ...
+    public function handle(WebhookHandled $event): void
+    {
+        if ($event->payload['meta']['event_name'] === 'order_created') {
+            Log::info('Event handled', ['event' => $event->payload['data']]);
+
+            Notification::route('mail', $attributes['user_email'])
+                ->notify(new WelcomeNotification($attributes['user_name']));
+        }
+    }
+}
+```
