@@ -21,6 +21,37 @@ npm run build
 
 And you are good to go.
 
-Deployment examples via Forge or Envoyer will be provided soon.
+## Deploying with Laravel Forge
+
+1. Create a new server on Forge
+2. Add your SSH key to the server
+3. Add your domain to the server
+4. Add your GitHub repo to the server
+5. Deploy the project
+
+### Deployment script for Laravel Forge
+
+```bash
+cd /home/forge/YOUR_PROJECT_PATH
+
+git fetch --all
+git reset --hard origin/$FORGE_SITE_BRANCH
+$FORGE_COMPOSER install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+
+( flock -w 10 9 || exit 1
+    echo 'Restarting FPM...'; sudo -S service $FORGE_PHP_FPM reload ) 9>/tmp/fpmlock
+
+if [ -f artisan ]; then
+    $FORGE_PHP artisan migrate --force
+fi
+
+php artisan cache:clear
+php artisan generate:sitemap
+
+npm install
+npm run build
+```
+
+Deployment examples via Envoyer will be provided soon.
 
 If you have any questions about deployment, [contact me](mailto:karakhanyans@gmail.com). I will help you to deliver the project with no additional cost.
