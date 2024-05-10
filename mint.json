@@ -86,7 +86,8 @@
         "features/users",
         "features/social-auth",
         "features/magic-links",
-        "features/database"
+        "features/database",
+        "features/openai"
       ]
     },
     {

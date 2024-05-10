@@ -1,11 +1,60 @@
-# 🤖 OpenAI
+---
+title: OpenAI API
+description: OpenAI API integration for Laravel
+icon: 'robot'
+---
 
-Everyone needs an AI in his project. I have integrated OpenAI service in Larafast, so you don't have to.
+Larafast provides a simple way to integrate OpenAI API with Laravel.
 
-File: `app/Services/OpenAIService.php`&#x20;
+## Installation
 
-It comes with **completion**, **textToSpeech** and **image** generation. Feel free to extend it with other models.
+1. Create an account on [OpenAI](https://platform.openai.com/signup)
+2. Create your API key from the dashboard from [API Keys](https://platform.openai.com/api-keys)
+3. Add your API key to your `.env` file as `OPENAI_KEY=your-api-key`
 
-{% hint style="info" %}
-Add OPENAI\_KEY= to your .env file
-{% endhint %}
+That's it, your project is ready to use OpenAI API.
+
+## Usage
+
+To use OpenAI API completion, you can use the instance of `OpenAIService`.
+
+```php
+use App\Services\OpenAIService;
+
+$openai = new OpenAIService();
+$response = $openai->completion('Write recipe based on the given ingredients: 1 cup of flour, 2 eggs, 1 cup of sugar');
+
+// You can also pass the model name
+$response = $openai->completion('Write recipe based on the given ingredients: 1 cup of flour, 2 eggs, 1 cup of sugar', 'davinci');
+
+// See the list of pre-defined model names in config/services.php -> openai.models
+
+// To get the response
+echo $response['choices'][0]['message']['content'];
+```
+
+To create images using OpenAI API, you can use:
+
+```php
+use App\Services\OpenAIService;
+
+$openai = new OpenAIService();
+$response = $openai->image('A beautiful sunset over the mountains');
+```
+
+You can adjust the number of generating images and the size in the OpenAIService@image method.
+
+To create an audio from text using OpenAI API, you can use:
+
+```php
+use App\Services\OpenAIService;
+
+$openai = new OpenAIService();
+$response = $openai->textToSpeech('Hello, how are you?');
+```
+
+<Warning>
+    The text-to-speech will return the audio content instead of the URL as for the image. You can save the audio content to a file or return it as a response.
+</Warning>
+
+For more information, you can check the [OpenAI API documentation](https://platform.openai.com/docs/overview) to add new features to your service or adjust existing ones.
