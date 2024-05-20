@@ -53,6 +53,7 @@
     {
       "group": "Tutorials",
       "pages": [
+        "tutorials/keeping-fork-up-to-date",
         "tutorials/lemonsqueezy-for-non-auth-users",
         "tutorials/lemonsqueezy-webhooks-for-non-auth-users",
         "tutorials/track-unique-user-visits-and-match-with-purchase",

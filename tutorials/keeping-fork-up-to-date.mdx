@@ -1,0 +1,65 @@
+---
+title: Keeping your fork up to date
+description: How to keep fork up to date with the original repository.
+icon: 'clock'
+---
+
+It's important to keep your fork up-to-date with the original repository. This ensures that your fork has the latest changes and features. This guide will show you how to keep your fork up-to-date with the original repository.
+
+## Fork the repository
+
+To fork the repository, click "Fork" button on the top right corner of the repository page.
+
+<Frame>
+    <img src="/images/tutorials/fork.jpg" />
+</Frame>
+
+## Clone your fork
+
+```bash
+git clone git@github.com:[your-fork-name].git
+```
+
+<Tip>
+    Follow the instructions in [VILT Stack](/intro-vilt) or [TALL Stack](/intro-tall) for initial setup of your project.
+</Tip>
+
+## Add the original repository as a remote
+
+```bash
+git remote add upstream https://github.com/karakhanyans-tools/larafast.git
+```
+
+For TALL stack:
+
+```bash
+git remote add upstream https://github.com/karakhanyans-tools/larafast-tall.git
+```
+
+For Directories:
+
+```bash
+git remote add upstream https://github.com/karakhanyans-tools/larafast-directories.git
+```
+
+## Fetch the latest changes from the original repository
+
+```bash
+git fetch upstream
+```
+
+## Merge the changes from the original repository
+
+```bash
+git merge upstream/master
+```
+
+If you see some conflicts, resolve them manually and then commit the changes.
+
+## Push the changes to your fork
+
+```bash
+git push origin master
+```
+
+That's it. Your fork is now up-to-date with the original repository.
