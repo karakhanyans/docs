@@ -84,7 +84,7 @@ echo "$RELEASE_NAME" >> $RELEASES_DIRECTORY/.successes
 if [ -d ~/$DOMAIN/current ] && [ ! -L ~/$DOMAIN/current ]; then
   rm -rf ~/$DOMAIN/current
 fi
-ln -s -n -f -T "$DEPLOYMENT_DIRECTORY/public" ~/$DOMAIN/current
+ln -s -n -f -T "$DEPLOYMENT_DIRECTORY" ~/$DOMAIN/current
 ```
 
 #### Clean Up
