@@ -1,0 +1,82 @@
+---
+title: Start Here
+description: Larafast API Boilerplate Documentation
+icon: 'arrow-right'
+---
+
+Welcome to the **Larafast API Boilerplate Documentation**
+
+Larafast API Boilerplate uses Laravel Framework v11.x, FilamentPHP, and Laravel Sanctum for authentication.
+
+<Tip>
+    Haven't gotten Larafast API Boilerplate yet? Check here: [https://larafast.com/projects/larafast-rest-api](https://larafast.com/projects/larafast-rest-api)
+</Tip>
+
+<Note>
+    Postman documentation is available at [https://documenter.getpostman.com/view/739183/2sA3QnhE57](https://documenter.getpostman.com/view/739183/2sA3QnhE57)
+</Note>
+## Installation
+
+To install the project you need to open your terminal and type these commands
+
+### Clone repo and install composer
+
+```bash
+git clone git@github.com:karakhanyans-tools/larafast-rest-api.git [YOUR_PROJECT_NAME]
+cd [YOUR_PROJECT_NAME]
+composer install
+```
+
+### Create .env file
+
+```bash
+cp .env.example .env
+```
+
+### Create APP_KEY just run:
+
+```bash
+php artisan key:generate
+```
+
+### Run migrations
+
+<Tip>
+    By default DB_CONNECTION is set to SQLite, feel free to change it to MySQL or any preferred DB.
+</Tip>
+
+To use MySQL as a database, update the .env file with the new database credentials.
+
+```bash .env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=your_db_name
+DB_USERNAME=root
+DB_PASSWORD=
+```
+
+<Tip>
+    By default, the project comes with pre-defined roles. If you want to modify them, update the `database/seeders/RoleSeeder.php` file.
+</Tip>
+
+Run the migrations and seed the database with the following command:
+```bash
+php artisan migrate --seed
+```
+
+### Run Local Server
+
+Laravel comes with a handy artisan serve command to run a local server. Feel free to use Valet or any other local server management tools.
+
+```bash
+php artisan serve
+```
+
+That's it. Visit [http://127.0.0.1:8000/](http://127.0.0.1:8000/) and see your API!
+
+<Warning>
+    Don't forget to remove the starter kit's git configs. To do so: `rm -rf .git` - to init fresh git folder later `git remote remove origin`
+</Warning>
+
+

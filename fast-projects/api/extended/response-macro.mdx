@@ -1,0 +1,63 @@
+---
+title: "Response Macro"
+description: "Response Macro for the Laravel HTTP client."
+---
+
+The `ResponseMacroServiceProvider` is a service provider in the Laravel framework. Service providers are the central place to configure your application. This particular provider is used to define response macros.
+
+In Laravel, a Response Macro is a way to define a custom method on the `Response` facade, allowing you to abstract complex code into a simple, expressive method that can be used throughout your application.
+
+In the `ResponseMacroServiceProvider`, several macros are defined:
+
+- `successMessage`: This macro returns a JSON response with a success message. The HTTP status code defaults to 200 (OK), but can be customized.
+
+```php ResponseMacroServiceProvider.php
+Response::macro('successMessage', function ($message = null, $status = JsonResponse::HTTP_OK): JsonResponse {
+    return Response::json([
+        'message' => $message ?? __('responses.general.success'),
+    ], $status);
+});
+```
+
+- `success`: This macro returns a JSON response with a data payload. The HTTP status code defaults to 200 (OK), but can be customized.
+
+```php ResponseMacroServiceProvider.php
+Response::macro('success', function ($data, $status = JsonResponse::HTTP_OK): JsonResponse {
+    return Response::json(['data' => $data], $status);
+});
+```
+
+- `errorMessage`: This macro returns a JSON response with an error message. The HTTP status code defaults to 400 (Bad Request), but can be customized.
+
+```php ResponseMacroServiceProvider.php
+Response::macro('errorMessage', function ($message = null, $status = JsonResponse::HTTP_BAD_REQUEST): JsonResponse {
+    return Response::json([
+        'message' => $message ?? __('responses.general.error'),
+    ], $status);
+});
+```
+
+- `error`: This macro returns a JSON response with a data payload indicating an error. The HTTP status code defaults to 400 (Bad Request), but can be customized.
+
+```php ResponseMacroServiceProvider.php
+Response::macro('error', function ($data, $status = JsonResponse::HTTP_BAD_REQUEST): JsonResponse {
+    return Response::json(['data' => $data], $status);
+});
+```
+
+- `token`: This macro returns a JSON response with a token and user data. The token is created for the given user and abilities.
+
+```php ResponseMacroServiceProvider.php
+Response::macro('token', function ($user, $abilities = ['*']): JsonResponse {
+    return Response::success(
+        [
+            'token' => $user->createToken(device(), $abilities)->plainTextToken,
+            'user' => new UserResource($user),
+        ],
+    );
+});
+```
+
+These macros are defined in the `boot` method of the service provider, which is called after all other service providers have been registered, meaning you have access to all other services that have been registered by the framework.
+
+The `ResponseMacroServiceProvider` is a great example of how you can use service providers to bootstrap parts of your application and keep your code organized and clean.

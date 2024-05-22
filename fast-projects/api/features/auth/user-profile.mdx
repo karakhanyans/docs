@@ -1,0 +1,55 @@
+---
+title: User Profile
+description: This document describes the authenticated user logic implemented in the Larafast API Boilerplate. The logic is primarily handled by the `AuhUserController` class.
+---
+
+## Fetching Authenticated User
+
+The `show` method in the `AuhUserController` class is used to fetch the authenticated user. It returns a `UserResource` instance for the authenticated user.
+
+```php
+public function show(Request $request)
+{
+    return new UserResource($request->user());
+}
+```
+
+## Updating Authenticated User
+
+The `update` method in the `AuhUserController` class is used to update the authenticated user's details. It accepts an `UpdateUserRequest` instance which validates the incoming request data. The `rules` method of this class specifies that the `name`, `email`, and `password` fields are optional, but if provided, they must meet certain criteria.
+
+```php
+public function update(UpdateUserRequest $request): UserResource
+{
+    $request->user()->update($request->validated());
+
+    return new UserResource($request->user());
+}
+```
+
+## Deleting Authenticated User
+
+The `destroy` method in the `AuhUserController` class is used to delete the authenticated user. It deletes the authenticated user from the database and returns a success message.
+
+```php
+public function destroy(Request $request)
+{
+    $request->user()->delete();
+
+    return response()->successMessage('User deleted successfully');
+}
+```
+
+## Routes
+
+The routes for fetching, updating, and deleting the authenticated user are defined in the `routes/auth.php` file. All these routes use the `AuhUserController` class, and the `show`, `update`, and `destroy` methods respectively. These routes are grouped under a middleware that ensures only authenticated users can access them.
+
+```php
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::get('/user', [AuhUserController::class, 'show']);
+    Route::patch('/user', [AuhUserController::class, 'update']);
+    Route::delete('/user', [AuhUserController::class, 'destroy']);
+});
+```
+
+This concludes the overview of the authenticated user logic in the application.

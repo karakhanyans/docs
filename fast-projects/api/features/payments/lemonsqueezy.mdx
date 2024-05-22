@@ -1,0 +1,105 @@
+---
+title: LemonSqueezy
+description: Subscriptions and One-time with LemonSqueezy
+icon: 'lemon'
+---
+
+<Warning>
+    For Initial Setup check out the [LemonSqueezy](/features/payments/lemonsqueezy) docs from Larafast on how to setup One-time payments and Subscriptions.
+</Warning>
+
+## Products
+
+To get the list of products, you can use the following method:
+
+```php LemonSqueezyController.php
+public function products(LemonSqueezyService $lemonSqueezyService)
+{
+    $products = $lemonSqueezyService->products();
+    // Uncomment the line below to cache the products
+    // It will cache the products forever, so you will need to clear the cache to get the latest products from the API
+    // after every deployment (php artisan cache:clear)
+
+    // $products = Cache::rememberForever('lemonsqueezy-products', static fn () => $lemonSqueezyService->products());
+
+    return response()->success($products['data']);
+}
+```
+
+It uses the `products` method from the `LemonSqueezyService` class to get the list of products. `LemonSqueezyService` is a service class that contains all the methods to interact with the LemonSqueezy API.
+
+<Tip>
+    You can cache the products to reduce the number of requests to the LemonSqueezy API. Uncomment the lines below the `$products` variable to cache the products.
+</Tip>
+
+## Subscriptions and One-time Payments
+
+Unlike for **TALL** or **VILT** stack, in the API we cannot redirect users directly to the payment page.
+Instead, we need to create a checkout session and return the checkout url to the Frontend or Mobile App.
+The client then uses the url to redirect the user to the payment page.
+
+### Subscriptions
+
+To create a subscription, you can use `subscriptionCheckout` method.
+
+It requires $product and $variant as parameters. The `$product` is the product id from LemonSqueezy Store and `$variant` is the variant id.
+
+```php LemonSqueezyController.php
+public function subscriptionCheckout(Request $request, $product, $variant): JsonResponse
+{
+    $user = $request->user();
+
+    if ($user->subscription()?->hasVariant($variant)) {
+        return response()->errorMessage('You are already subscribed to that plan');
+    }
+
+    if ($user->subscribed() && $user->subscription()?->valid()) {
+        $user->subscription()
+            ?->load('owner')
+            ->endTrial()
+            ->swap($product, $variant);
+
+        return response()->successMessage('You have successfully subscribed to '.$variant.' plan');
+    }
+
+    return response()->success(['url' => $user->subscribe($variant)->url()]);
+}
+```
+
+Redirect the user to the returned url to complete the payment.
+
+### One-time Payments
+
+To create a one-time payment, you can use the `productCheckout` method.
+It requires `$variantId` parameter. The `$variant` is the variant id in LemonSqueezy Store.
+
+```php LemonSqueezyController.php
+public function productCheckout(Request $request, $variantId): JsonResponse
+{
+    return response()->success([
+        'url' => $request->user()->checkout($variantId)->redirectTo(config('app.frontend_url'))->url()
+    ]);
+}
+```
+
+Redirect the user to the returned url to complete the payment.
+
+## Webhook
+
+Check out the [Webhook](/features/payments/lemonsqueezy#webhooks) docs from Larafast on how to setup the webhook for LemonSqueezy.
+
+## Billing Portal
+
+If you want to allow users to manage their subscriptions, you can use the billing portal.
+Redirect the user to the billing portal url to allow them to manage their subscriptions.
+
+```php LemonSqueezyController.php
+public function billing(Request $request): Response
+{
+    return response()->success(['url' => $request->user()->customerPortalUrl()]);
+}
+```
+
+<Warning>
+    User should be a LemonSqueezy customer (means purchased a product or have a subscription) to access the billing portal.
+</Warning>

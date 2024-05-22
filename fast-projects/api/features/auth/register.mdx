@@ -1,0 +1,53 @@
+---
+title: Register
+description: User registration
+---
+
+<Note>
+    All routes related to Authentication are placed in `routes/auth.php` file, which is loaded inside `routes/api.php`.
+</Note>
+
+## Registration
+
+For registration in Larafast API Boilerplate responsible `app/Http/Controllers/Auth/RegisteredUserController.php`.
+
+The `store` method is the primary method in this controller. It handles incoming registration requests. The method accepts a `RegisterRequest` object, which encapsulates the validation rules for the registration data.
+
+Here's a brief overview of the `store` method:
+
+```php
+public function store(RegisterRequest $request): JsonResponse
+{
+    $user = User::create([
+        'name' => $request->name,
+        'email' => $request->email,
+        'password' => Hash::make($request->password),
+    ]);
+
+    event(new Registered($user));
+
+    // Assign role to user if you have roles
+    // $user->assignRole('user');
+
+    return response()->token($user);
+}
+```
+
+The `store` method performs the following steps:
+
+1. It creates a new `User` instance using the validated data from the `RegisterRequest` object. The password is hashed before being stored in the database.
+
+2. It fires a `Registered` event, passing the newly created user as the event's argument. This event can be used to perform actions after a user has been registered, such as sending a welcome email.
+
+3. If roles are implemented in the application, a role can be assigned to the user at this point. This line is commented out in the provided code.
+
+4. Finally, it returns a JSON response containing a token for the newly registered user. This token can be used for subsequent authenticated requests.
+
+<Tip>
+    To learn more about the `return response()->token($user);` method, refer to the [Response Macros](/fast-projects/api/extended/response-macro) section.
+</Tip>
+Remember, this is a basic implementation of a registration controller. Depending on the requirements of your application, you might need to add more functionality, such as email verification, role assignment, etc.
+
+<Info>
+    Reference in Postman: [Register](https://documenter.getpostman.com/view/739183/2sA3QnhE57#e051d151-3937-42c8-896f-381cc424eeb5)
+</Info>

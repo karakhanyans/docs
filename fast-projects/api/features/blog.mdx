@@ -1,0 +1,29 @@
+---
+title: Blog
+description: Blog and Articles
+icon: 'page'
+---
+
+Blog is managed by Admin panel, you can create, edit, delete and reorder blog posts.
+
+To display blog posts on the website, you can use `BlogController`
+
+```php BlogController.php
+public function index()
+{
+    $articles = Article::with('user')->active()->latest()->get();
+
+    return ArticleResource::collection($articles);
+}
+```
+
+To display a single blog post, you can use `show` method
+
+```php BlogController.php
+public function show(Article $article)
+{
+    abort_if(!$article->active, 404);
+
+    return new ArticleResource($article);
+}
+```

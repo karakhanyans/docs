@@ -1,0 +1,43 @@
+---
+title: OpenAI
+description: OpenAI Docs
+icon: 'robot'
+---
+
+<Note>
+    To learn about OpenAI Service in Larafast check the [OpenAI Service](/features/openai) documentation.
+</Note>
+
+## Introduction
+
+To use OpenAI API in your application, you need to create an account on OpenAI and get the API key. You can get the API key from the OpenAI dashboard.
+
+## Usage
+
+To use OpenAI service, you can use OpenAIController which is already included in the package. You can use the following methods to interact with OpenAI API.
+
+### For text completion
+```php OpenAIController.php
+public function completion(Request $request)
+{
+    return $this->openAIService->completion($request->get('prompt'), $request->get('model'));
+}
+```
+
+### For text to speech
+
+```php OpenAIController.php
+public function textToSpeech(Request $request): PromiseInterface|Response
+{
+    return $this->openAIService->textToSpeech($request->get('text'));
+}
+```
+
+### For image completion
+```php OpenAIController.php
+public function images(Request $request)
+{
+    return $this->openAIService->images($request->get('prompt'));
+}
+```
+

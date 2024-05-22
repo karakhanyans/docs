@@ -1,0 +1,125 @@
+---
+title: Stripe
+description: Subscriptions and One-time with Stripe
+icon: 'stripe'
+---
+
+<Warning>
+    For Initial Setup check out the [Stripe](/features/payments/stripe) docs from Larafast on how to setup One-time payments and Subscriptions.
+</Warning>
+
+## Subscriptions and One-time Payments
+
+Unlike for **TALL** or **VILT** stack, in the API we cannot redirect users directly to the payment page.
+Instead, we need to create a checkout session and return the checkout url to the Frontend or Mobile App.
+The client then uses the url to redirect the user to the payment page.
+
+### Subscriptions
+
+To create a subscription, you can use `subscriptionCheckout` method.
+
+It requires $price parameter. The `$price` is the price id from Stripe Store.
+
+```php StripeController.php
+public function subscriptionCheckout(Request $request, $price)
+{
+    $user = $request->user();
+
+    if ($user->subscribedToPrice($price)) {
+        return response()->errorMessage('You are already subscribed to that plan');
+    }
+
+    if ($user->subscribed() && $user->subscription()?->valid()) {
+        $user->subscription()
+            ?->load('owner')
+            ->skipTrial()
+            ->swap($price);
+
+        return response()->successMessage('You have successfully subscribed to '.$price.' plan');
+    }
+
+    $checkoutData = $user->newSubscription('default', $price)
+        ->allowPromotionCodes() // Remove allowPromotionCodes() if you do not allow promo codes
+        ->checkout([
+            'success_url' => config('app.frontend_url').'?session_id={CHECKOUT_SESSION_ID}',
+            'cancel_url' => config('app.frontend_url').'?session_id={CHECKOUT_SESSION_ID}&error=1',
+        ])->toArray();
+
+    return response()->success($checkoutData);
+}
+```
+
+`$checkoutData` will contain the checkout session id and the url to redirect the user to the payment page.
+
+`success_url` and `cancel_url` are the urls that the user will be redirected to after the payment is successful or canceled.
+
+<Warning>
+    Make sure to add `FRONTEND_URL` in your `.env` file.
+</Warning>
+
+### One-time Payments
+
+To create a one-time payment, you can use the `productCheckout` method.
+It requires `$price` parameter. The `$price` is the price id in Stripe.
+
+```php StripeController.php
+public function productCheckout(Request $request, $price)
+{
+    $checkoutData = $request->user()->checkout($price, [
+        'success_url' => config('app.frontend_url').'?session_id={CHECKOUT_SESSION_ID}',
+        'cancel_url' => config('app.frontend_url').'?session_id={CHECKOUT_SESSION_ID}&error=1',
+    ])->toArray();
+
+    return response()->success($checkoutData);
+}
+```
+
+`$checkoutData` will contain the checkout session id and the url to redirect the user to the payment page.
+
+`success_url` and `cancel_url` are the urls that the user will be redirected to after the payment is successful or canceled.
+
+After successful payment, the user will be redirected to the `success_url` with the `session_id` in the query string.
+
+Use the session id to retrieve the payment details and update the user's subscription or product.
+Send the `session_id` to the backend to verify the payment.
+
+```php StripeController.php
+public function success(Request $request): RedirectResponse
+{
+    $sessionId = $request->get('session_id');
+
+    try {
+        Cashier::stripe()->checkout->sessions->retrieve($sessionId);
+    } catch (\Exception $exception) {
+        return response()->errorMessage('Something went wrong');
+    }
+
+    // If checkout was successful, you can add your logic here
+    // For example, you can update user columns, add points, etc.
+    // Alternatively you can do the same in the StripeEventListener.php file by listening to the event from Stripe Webhook
+
+    return response()->successMessage('You have successfully subscribed');
+}
+```
+
+## Webhook
+
+Check out the [Webhook](/features/payments/stripe#webhooks) docs from Larafast on how to setup the webhook for Stripe.
+
+## Billing Portal
+
+If you want to allow users to manage their subscriptions, you can use the billing portal.
+Redirect the user to the billing portal url to allow them to manage their subscriptions.
+
+```php StripeController.php
+public function billing(Request $request): Response
+{
+    $url = $request->user()->billingPortalUrl(config('app.frontend_url'));
+
+    return \response()->success(['url' => $url]);
+}
+```
+
+<Warning>
+    User should be a Stripe customer (means purchased a product or have a subscription) to access the billing portal.
+</Warning>

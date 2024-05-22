@@ -37,6 +37,10 @@
     {
       "name": "Fast Projects: Directories",
       "url": "fast-projects/directories"
+    },
+    {
+      "name": "Fast Projects: API",
+      "url": "fast-projects/api"
     }
   ],
   "anchors": [
@@ -155,6 +159,52 @@
       "group": "Demo",
       "pages": [
         "fast-projects/directories/features/demo"
+      ]
+    },
+    {
+      "group": "Get Started",
+      "pages": [
+        "fast-projects/api/intro"
+      ]
+    },
+    {
+      "group": "Features",
+      "pages": [
+        {
+          "group": "Auth",
+            "pages": [
+                "fast-projects/api/features/auth/register",
+                "fast-projects/api/features/auth/login",
+                "fast-projects/api/features/auth/forgot-password",
+                "fast-projects/api/features/auth/user-profile",
+                "fast-projects/api/features/auth/social-auth"
+            ],
+          "icon": "user-shield"
+        },
+        {
+          "group": "Payments",
+          "pages": [
+            "fast-projects/api/features/payments/lemonsqueezy",
+            "fast-projects/api/features/payments/stripe"
+          ],
+          "icon": "money-check-dollar"
+        },
+        "fast-projects/api/features/admin",
+        "fast-projects/api/features/blog",
+        "fast-projects/api/features/openai",
+        "fast-projects/api/features/coming-soon"
+      ]
+    },
+    {
+      "group": "Extended",
+      "pages": [
+        "fast-projects/api/extended/response-macro"
+      ]
+    },
+    {
+      "group": "Postman Documentation",
+      "pages": [
+        "fast-projects/api/postman"
       ]
     },
     {

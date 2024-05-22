@@ -1,0 +1,58 @@
+---
+title: "Social Authentication with Socialite"
+sidebarTitle: "Social Authentication"
+description: "Learn how to implement social authentication in the Larafast API Boilerplate."
+---
+
+This document describes the social authentication logic implemented in the PHP Laravel application using the Socialite package. The logic is primarily handled by the `SocialiteController` class.
+
+## Redirecting to the OAuth Provider
+
+The `redirect` method in the `SocialiteController` class is used to redirect the user to the OAuth provider. The method accepts a `driver` parameter which specifies the OAuth provider to use.
+
+```php
+public function redirect($driver)
+{
+    return Socialite::driver($driver)->stateless()->redirect();
+}
+```
+
+## Handling Provider Callbacks
+
+The `callback` method in the `SocialiteController` class is used to handle the callback from the OAuth provider. It retrieves the user details from the provider and creates or retrieves the corresponding user record in the application's database.
+
+```php
+public function callback($driver)
+{
+    $userData = Socialite::driver($driver)->stateless()->user();
+
+    $user = User::firstOrCreate(['email' => $userData->getEmail()], [
+        'name' => $userData->getName(),
+        'password' => Hash::make(Str::random()),
+    ]);
+
+    $user->socialAccounts()->firstOrCreate(['account_id' => $userData->getId()], [
+        'provider' => $driver,
+        'token' => $userData->token,
+    ]);
+
+    return response()->token($user);
+}
+```
+
+## Routes
+
+The routes for social authentication are defined in the `routes/auth.php` file. The routes use the `SocialiteController` class, and the `redirect` and `callback` methods respectively. These routes are grouped under a middleware that ensures only guest users can access them.
+
+```php
+Route::middleware(['guest'])->group(function () {
+    Route::get('/auth/{driver}', [SocialiteController::class, 'redirect']);
+    Route::get('/auth/{driver}/callback', [SocialiteController::class, 'callback']);
+});
+```
+
+This concludes the overview of the social authentication logic in the application.
+
+<Note>
+    To learn more on how to create Google, Twitter or Github OAuth applications, refer to the main doc [Social Auth](/features/social-auth)
+</Note>

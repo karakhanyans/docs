@@ -1,0 +1,20 @@
+---
+title: Coming Soon Page
+description: How to store emails from coming soon page in the database.
+icon: 'at'
+---
+
+## Usage
+
+To store emails from the coming soon page in the database, you can use the following code.
+
+```php ComingSoonController.php
+public function store(ComingSoonRequest $request)
+{
+    $comingSoonEmail = ComingSoonEmail::create($request->validated());
+
+    return response()->success($comingSoonEmail, 201);
+}
+```
+
+Data will be stored in the `coming_soon_emails` table and be accessible via the Admin Panel.

@@ -1,0 +1,88 @@
+---
+title: "Login"
+description: "User Login and Logout Documentation"
+---
+
+This document describes the login logic implemented in the Larafast API Boilerplate. The logic is primarily handled by the `LoginController` class.
+
+## Login Request Validation
+
+The first step in the login process is validating the incoming request data. This is done using the `LoginRequest` class, which extends Laravel's `FormRequest` class. The `rules` method of this class specifies that both the `email` and `password` fields are required, and that the `email` field must be a valid email address.
+
+```php
+class LoginRequest extends FormRequest
+{
+    public function rules(): array
+    {
+        return [
+            'email' => ['required', 'string', 'email'],
+            'password' => ['required', 'string'],
+        ];
+    }
+}
+```
+
+## User Authentication
+
+The `store` method in the `LoginController` class handles the actual authentication. It retrieves the user record with the provided email address, and then uses Laravel's `Hash` facade to check if the provided password matches the hashed password stored in the database.
+
+If the user record doesn't exist, or if the password doesn't match, a `ValidationException` is thrown with a message indicating that the authentication failed.
+
+```php
+public function store(LoginRequest $request): JsonResponse
+{
+    $user = User::where('email', $request->get('email'))->first();
+
+    if (! $user || ! Hash::check($request->get('password'), $user->password)) {
+        throw ValidationException::withMessages([
+            'email' => [__('auth.failed')],
+        ]);
+    }
+
+    return response()->token($user);
+}
+```
+
+## Token Generation
+
+If the authentication is successful, a token is generated for the user. This is done using the `token` macro defined in the `ResponseMacroServiceProvider` class. The token is then returned in the response.
+
+```php
+Response::macro('token', function ($user, $abilities = ['*']): JsonResponse {
+    return Response::success(
+        [
+            'token' => $user->createToken(device(), $abilities)->plainTextToken,
+            'user' => new UserResource($user),
+        ],
+    );
+});
+```
+
+## Logout
+
+The `destroy` method in the `LoginController` class handles logout. It deletes the current access token for the authenticated user, and then returns a success message.
+
+```php
+public function destroy(Request $request): JsonResponse
+{
+    $request->user()->currentAccessToken()->delete();
+
+    return response()->successMessage('Successfully logged out');
+}
+```
+
+## Routes
+
+The routes for login and logout are defined in the `routes/auth.php` file. Both routes use the `LoginController` class, and the `store` and `destroy` methods respectively.
+
+```php
+Route::post('/login', [LoginController::class, 'store'])
+    ->middleware('guest')
+    ->name('login');
+
+Route::post('/logout', [LoginController::class, 'destroy'])
+    ->middleware('auth:sanctum')
+    ->name('logout');
+```
+
+This concludes the overview of the login logic in the application.
