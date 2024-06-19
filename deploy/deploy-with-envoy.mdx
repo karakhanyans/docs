@@ -1,0 +1,122 @@
+---
+title: Deployment with Laravel Envoy
+sidebarTitle: Deploy with Envoy
+description: One-command deployment with Laravel Envoy
+icon: 'rocket'
+---
+
+Larafast comes with a pre-configured Laravel Envoy deployment script that allows you to deploy your Laravel application with a single command.
+
+Laravel Envoy is a tool for executing common tasks you run on your remote servers. Using Blade style syntax, you can easily setup tasks for deployment, Artisan commands, and more. Currently, Envoy only supports the Mac and Linux operating systems. However, Windows support is achievable using WSL2.
+
+<Tip>
+    To read more check the official docs: [Laravel Envoy Documentation](https://laravel.com/docs/11.x/envoy)
+</Tip>
+
+## How to install SSH connection from local machine to server
+
+Before you can deploy your application using Laravel Envoy, you need to set up an SSH connection between your local machine and the server where your application is hosted. This allows you to run commands on the server from your local machine.
+
+To set up an SSH connection, you need to generate an SSH key pair on your local machine and add the public key to the `authorized_keys` file on the server.
+
+### Generate SSH Key Pair
+
+To generate an SSH key pair, run the following command in your terminal:
+
+```bash
+ssh-keygen -t ed25519 -C "your_email@example.com"
+```
+
+This command generates an RSA key pair with a bit length of 4096 and an email address as a comment.
+
+### Add Public Key to Server
+
+After generating the SSH key pair, you need to add the public key to the `authorized_keys` file on the server. You can do this by running the following command:
+
+```bash
+ssh-copy-id user@server
+```
+
+Replace `user` with your server username and `server` with the server IP address or domain name.
+
+## Deployment Script
+
+The deployment script is located in the `Envoy.blade.php` file in the root directory of your Laravel application. The script contains tasks for deploying your application, running migrations, clearing caches, and more.
+
+Here is an example of a deployment script using Laravel Envoy:
+
+```php Envoy.blade.php
+@servers(['web' => ['user@your-server-ip-address']])
+
+{{--Set up the branch and project folder--}}
+@setup
+    $branch = 'master';
+    $folder = '/home/user/project_folder';
+@endsetup
+
+@story('deploy')
+    git
+    composer
+    artisan
+    npm
+@endstory
+
+{{--Update the project from the repository--}}
+@task('git', ['on' => 'web'])
+    cd {{ $folder }}
+
+    git fetch --all
+    git reset --hard origin/{{ $branch }}
+@endtask
+
+{{--Install the composer dependencies--}}
+@task('composer', ['on' => 'web'])
+    cd {{ $folder }}
+
+    composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+@endtask
+
+{{--Run the migrations and clear the cache--}}
+@task('artisan', ['on' => 'web'])
+    cd {{ $folder }}
+
+    php artisan migrate --force
+    php artisan cache:clear
+    php artisan generate:sitemap
+@endtask
+
+{{--Install the npm dependencies and build the assets--}}
+@task('npm', ['on' => 'web'])
+    cd {{ $folder }}
+
+    npm install
+    npm run build
+@endtask
+
+{{--Notify the team on Slack for successful deployment--}}
+@success
+    @slack('webhook-url', '#bots')
+@endsuccess
+
+{{--Notify the team on Slack for failed deployment--}}
+@error
+    @slack('webhook-url', '#bots')
+@enderror
+```
+
+## Running the Deployment Script
+
+
+After installing Laravel Envoy, you can run the deployment script using the following command:
+
+```bash
+ ./vendor/bin/envoy run deploy
+```
+
+This command runs the `deploy` story defined in the `Envoy.blade.php` file.
+
+You can also run separate tasks from the deployment script using the following command:
+
+```bash
+ ./vendor/bin/envoy run git
+```

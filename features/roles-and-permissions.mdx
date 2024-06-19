@@ -1,0 +1,99 @@
+---
+title: Roles & Permissions
+description: Learn how to manage roles and permissions in your Laravel application
+icon: 'lock'
+---
+
+Larafast comes with [Spatie Laravel Permission](https://spatie.be/docs/laravel-permission/v6/introduction) package pre-installed. This package allows you to manage user roles and permissions in your Laravel application.
+
+<Note>
+    If you have updated your exising Larafast project, make sure to run migrations to add the necessary tables to your database.
+</Note>
+
+## Usage
+
+### Creating Roles
+
+There are two ways to create roles in your application:
+
+1. Using RoleSeeder.php
+
+database/seeders/RoleSeeder.php file contains two pre-defined roles: `user` and `admin`
+
+Run seeder command to add these roles to the database:
+
+```bash
+php artisan db:seed --class=RoleSeeder
+```
+
+2. Using Admin Dashboard
+
+You can also create roles using the Admin Dashboard. Visit `/admin/roles` route in your browser and click on the "New Role" button.
+
+### Creating Permissions
+
+Permissions can be created in a similar way:
+
+1. Using PermissionSeeder.php
+
+database/seeders/PermissionSeeder.php file contains a few pre-defined permissions
+
+Run seeder command to add these permissions to the database:
+
+```bash
+php artisan db:seed --class=PermissionSeeder
+```
+
+2. Using Admin Dashboard
+
+You can also create permissions using the Admin Dashboard. Visit `/admin/permissions` route in your browser and click on the "New Permission" button.
+
+### Assigning Roles and Permissions
+
+Roles and permissions can be assigned to users using the Admin Dashboard.
+
+1. Visit `/admin/users` route in your browser
+
+2. Click on the "Edit" button next to the user you want to assign roles/permissions to
+
+3. Click on the "Roles" or "Permissions" tab and assign the desired roles/permissions
+
+### Middleware
+
+You can protect routes using the `role` and `permission` middleware provided by the Spatie Laravel Permission package.
+
+```php
+Route::get('/admin', function () {
+    //
+})->middleware('role:admin');
+```
+
+```php
+Route::get('/admin', function () {
+    //
+})->middleware('permission:edit articles');
+```
+
+### Scopes
+
+The `HasRoles` trait also adds role and withoutRole scopes to your models to scope the query to certain roles or permissions:
+
+```php
+$users = User::role('writer')->get(); // Returns only users with the role 'writer'
+$nonEditors = User::withoutRole('editor')->get(); // Returns only users without the role 'editor'
+```
+
+The role and `withoutRole` scopes can accept a string, a `\Spatie\Permission\Models\Role` object or an `\Illuminate\Support\Collection` object.
+
+The same trait also adds scopes to only get users that have or don't have a certain permission.
+
+```php
+$users = User::permission('edit articles')->get(); // Returns only users with the permission 'edit articles' (inherited or directly)
+$usersWhoCannotEditArticles = User::withoutPermission('edit articles')->get(); // Returns all users without the permission 'edit articles' (inherited or directly)
+```
+
+The scope can accept a string, a `\Spatie\Permission\Models\Permission` object or an `\Illuminate\Support\Collection` object.
+
+<Tip>
+    To learn more about the Spatie Laravel Permission package, refer to the official documentation: [Spatie Laravel Permission](https://spatie.be/docs/laravel-permission/v6/basic-usage/basic-usage)
+</Tip>

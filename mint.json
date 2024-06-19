@@ -89,6 +89,7 @@
         },
         "features/blog",
         "features/users",
+        "features/roles-and-permissions",
         "features/social-auth",
         "features/magic-links",
         "features/database",
@@ -210,7 +211,9 @@
     {
       "group": "Deployment",
       "pages": [
-        "deploy/deploy-to-prod"
+        "deploy/deploy-to-prod",
+        "deploy/deploy-with-forge",
+        "deploy/deploy-with-envoy"
       ]
     }
   ],
