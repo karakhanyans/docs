@@ -1,0 +1,94 @@
+---
+title: Larafast Installer
+description: Install Larafast Boilerplates with single command
+icon: 'arrow-right'
+---
+
+Welcome to the **Larafast Installer Documentation**
+
+This installer is a CLI command to install Larafast boilerplates with a single click.
+
+<Tip>
+    Haven't gotten Larafast yet? Check here: [https://larafast.com](https://larafast.com)
+</Tip>
+
+## Installation
+
+To install the project you need to open your terminal and type this command
+
+```bash
+curl -s -O https://larafast.com/install && bash install [YOUR_PROJECT_NAME]
+```
+
+## Step #1
+
+Choose the boilerplate you want to install
+
+```bash
+ ┌ Choose your Boilerplate ───────────────────────────────────────────────┐
+ │ › ● Larafast TALL Stack (Tailwind CSS, Alpine.js, Laravel, Livewire)   │
+ │   ○ Larafast VILT Stack (Vue.js, Inertia.js, Laravel, Tailwind CSS)    │
+ │   ○ Larafast Directory Boilerplate                                     │
+ │   ○ Larafast API Boilerplate                                           │
+ └────────────────────────────────────────────────────────────────────────┘
+  Make sure you have access to git repository to install Larafast
+```
+
+## Step #2
+
+Select the database you want to use
+
+```bash
+ ┌ Choose your Database ────────────────────────────────────────┐
+ │   ○ SQLite                                                   │
+ │ › ● MySQL                                                    │
+ │   ○ PostgreSQL                                               │
+ │   ○ SQL Server                                               │
+ └──────────────────────────────────────────────────────────────┘
+  Choose the database you want to use
+```
+
+## Step #3
+
+If you already have a repository, you can provide the URL
+
+```bash
+ ┌ Want to set up a new git repository? (Enter to skip) ────────┐
+ │ https://github.com/karakhanyans-tools/larafast-tall.git      │
+ └──────────────────────────────────────────────────────────────┘
+  Enter the git repository URL (Enter to skip)
+```
+
+That's it!
+
+Your boilerplate will be installed in the directory you provided.
+
+## Note:
+
+The benefit of this approach is that you can install boilerplates with a single command and start working on your project right away.
+Also, it will add an upstream to the boilerplate repository so you can pull the latest changes from the boilerplate repository and keep your project up to date.
+
+As GitHub by default allows only one fork per account, this approach allows you to install multiple boilerplates without any limitations and have the code up to date with main repo.
+
+## Alias
+
+You can also add an alias to your `.bashrc` or `.zshrc` file to make the installation process even easier.
+
+```bash
+alias "larafast new"='curl -s -O https://larafast.com/install && bash install'
+```
+
+```bash
+source ~/.bashrc
+```
+or if you use zsh
+
+```bash
+source ~/.zshrc
+```
+
+Now you can install Larafast boilerplates with a single command
+
+```bash
+larafast new [YOUR_PROJECT_NAME]
+```

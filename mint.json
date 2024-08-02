@@ -50,6 +50,7 @@
     {
       "group": "Get Started",
       "pages": [
+        "larafast-installer",
         "intro-vilt",
         "intro-tall"
       ]
