@@ -1,0 +1,41 @@
+---
+title: Teams
+description: Teams in Jetstream
+icon: 'users-line'
+---
+
+Jetstream provides a robust team management feature that allows users to create, manage, and collaborate within teams. This feature is highly integrated with other aspects of Jetstream, including user registration, login, and profile management.
+
+<Tip>
+To learn more, check this section: [https://jetstream.laravel.com/features/teams.html](https://jetstream.laravel.com/features/teams.html)
+</Tip>
+
+## Enabling Jetstream Teams
+
+By default, Jetstream's Teams feature is included in the Jetstream package. This feature allows users to create teams and invite other users to collaborate within those teams. Each team can have its own set of resources, and users can easily switch between teams.
+
+Key features include:
+- **Team Creation:** Users can create teams directly from their dashboard.
+- **Invitations:** Team owners can invite others to join their teams via email.
+- **Team Management:** Team members can be assigned different roles, and permissions can be managed to control access to team resources.
+- **Switching Teams:** Users can seamlessly switch between multiple teams they are a part of.
+
+For more detailed information on how to use Jetstream Teams, please refer to the official documentation [here](https://jetstream.laravel.com/features/teams.html).
+
+## Disabling Jetstream Teams
+
+If your application does not require team functionality, you can easily disable the Jetstream Teams feature. This can be done by modifying the `config/jetstream.php` configuration file.
+
+To disable the Teams feature, simply comment out or remove the following line in the `features` array:
+
+```php
+// config/jetstream.php
+
+'features' => [
+    // Other features...
+
+    // Disable the Teams feature by commenting out this line
+    // Features::teams(['invitations' => true]),
+
+    // Other features...
+],
