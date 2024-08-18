@@ -90,6 +90,7 @@
         },
         "features/blog",
         "features/users",
+        "features/teams",
         "features/roles-and-permissions",
         "features/social-auth",
         "features/magic-links",
