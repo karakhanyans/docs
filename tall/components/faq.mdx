@@ -3,7 +3,38 @@ title: FAQ
 description: FAQ component doc
 ---
 
-FAQ to answer most common user questions
+The FAQ component provides a streamlined way to present frequently asked questions on your site, enhancing user experience by addressing common queries in a structured format. This component leverages Laravel's localization capabilities, allowing you to offer FAQs in multiple languages easily.
+
+## Defining Your FAQs
+
+You can manage the FAQs for your site by editing the relevant language files. By default, the FAQs are defined in `lang/en/faq.php`. To support multiple languages, you can create additional `faq.php` files within the respective language directories, such as `lang/fr/faq.php` for French or `lang/es/faq.php` for Spanish.
+
+The `faq.php` file returns an array of title and content for the FAQ.
+
+```php
+<?php
+
+return [
+    [
+        'title' => 'Faq 1',
+        'content' => 'Faq Content 1',
+    ],
+    [
+        'title' => 'Faq 2',
+        'content' => 'Faq Content 2',
+    ],
+    [
+        'title' => 'Faq 3',
+        'content' => 'Faq Content 3',
+    ],
+    [
+        'title' => 'Faq 4',
+        'content' => 'Faq Content 4',
+    ],
+];
+```
+
+## FAQ component
 
 ```html resources/views/livewire/faq.blade.php
 <div class="py-8 sm:py-16 px-8">
