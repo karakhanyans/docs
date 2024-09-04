@@ -120,3 +120,9 @@ You can also run separate tasks from the deployment script using the following c
 ```bash
  ./vendor/bin/envoy run git
 ```
+
+<Tip>
+    If you've given your SSH key a passphrase then you'll be prompted to provide it multiple times during the deployment.
+
+    To avoid this you can combine the contents of the tasks into a single task, which will mean you only get prompted for the passphrase once.
+</Tip>
