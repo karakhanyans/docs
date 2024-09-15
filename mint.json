@@ -93,6 +93,7 @@
         "features/blog",
         "features/changelog",
         "features/users",
+        "features/emails",
         "features/teams",
         "features/roles-and-permissions",
         "features/social-auth",
