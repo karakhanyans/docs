@@ -72,6 +72,7 @@
       "pages": [
         {
           "group": "Payments",
+          "icon": "money-check-dollar",
           "pages": [
             "features/payments/lemonsqueezy",
             "features/payments/stripe",
@@ -81,6 +82,7 @@
         "features/admin",
         {
           "group": "SEO",
+          "icon": "magnifying-glass",
           "pages": [
             "features/seo/introduction",
             "features/seo/og-images",
@@ -89,6 +91,7 @@
           ]
         },
         "features/blog",
+        "features/changelog",
         "features/users",
         "features/teams",
         "features/roles-and-permissions",
