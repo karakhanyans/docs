@@ -1,0 +1,33 @@
+---
+title: Emails
+description: "Mailgun, Postmark, Amazon SES, Resend, and more. "
+icon: "envelope"
+---
+
+Emails are sent using Laravel's built-in Mail functionality, which supports various mailers including SMTP, Mailgun, Postmark, Amazon SES, Resend, and more. To get started, configure your mail settings in the `.env` file.
+
+Larafast uses [Resend](https://resend.com) as our default email provider.
+
+## Configuration
+
+```env
+MAIL_MAILER=resend
+MAIL_FROM_ADDRESS="sergey@phlaunches.com"
+MAIL_FROM_NAME="${APP_NAME}"
+RESEND_API_KEY=re_nKMWy5on_JS3FPhuCQgYN7rJgtVmac9aS
+```
+
+## Notifications
+
+Larafast comes with 6 transactional notifications:
+
+- Magic link notifications
+- Password reset notifications
+- Email verification notifications
+- Order Created notifications
+- Subscription Created notifications
+- Welcome notifications
+
+You can find these in `resources/views/emails`.
+
+For more information on how to customize these notifications, see the [Laravel Notifications documentation](https://laravel.com/docs/11.x/notifications) and [Laravel Mail documentation](https://laravel.com/docs/11.x/mail).
