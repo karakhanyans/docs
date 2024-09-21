@@ -1,5 +1,5 @@
 ---
-title: Stripe
+title: Stripe [updated]
 description: Stripe Integration in Larafast
 icon: 'stripe'
 ---
@@ -54,9 +54,9 @@ php artisan stripe:create-products-and-prices
 
 If you want to modify a product or plan, change them in .json files and rerun the command.
 
-In the project `resources/js/Components/Plans.vue update plan->slug with the ID of your price and that's it! :rocket:
+In the project `resources/js/Components/Plans.vue` update plan->slug with the ID of your price and that's it! :rocket:
 
-### Checkout URL
+### Subscription Checkout URL
 
 ```php web.php
 Route::get('subscription-checkout/{price}', [StripeController::class, 'subscriptionCheckout'])->name('subscription.checkout');
@@ -78,12 +78,38 @@ php artisan stripe:create-single-payment-products
 
 For single payment prices stripe is not accepting "id", it is autogenerating. To accept single payments check your freshly generated prices in Stripe ( [https://dashboard.stripe.com/products](https://dashboard.stripe.com/products?active=true))->your product and use Price->API ID (e.g. price\_1OcPptFocfJlGF71c5uS2xjs )
 
-### Checkout URL
+### ProductCheckout URL
 
 ```php web.php
 Route::get('product-checkout/{price}', [StripeController::class, 'productCheckout'])->name('product.checkout');
 ```
 
+### [new] Products and Prices in Database 
+
+If you want to use products and prices from the database, you need to add following events to your webhook:
+
+```bash
+product.created
+product.updated
+price.created
+price.updated
+```
+
+To see the full list of required webhooks check [Webhooks](/features/payments/stripe#webhooks) section
+
+After running `stripe:create-products-and-prices` or `stripe:create-single-payment-products` the products and prices will be created in the database via webhooks.
+
+That means, that even if you create products and prices manually in the Stripe Dashboard, you will have them in the database and will be able to use them in the project.
+
+To learn more about Products and Prices check `app/Listeners/StripeEventListener.php`
+
+You can also sync products and prices from the Stripe Dashboard to the database by running:
+
+```bash
+php artisan stripe:sync-products-and-prices
+```
+
+This command will sync all the products and prices from the Stripe Dashboard to the database.
 ***
 
 ### Stripe URL's
@@ -145,6 +171,15 @@ customer.deleted
 payment_method.automatically_updated
 invoice.payment_action_required
 invoice.payment_succeeded
+
+// for products and prices to be created from the database
+product.created
+product.updated
+price.created
+price.updated
+
+// for single payment products
+checkout.session.completed
 ```
 
 To create your webhooks, run:&#x20;

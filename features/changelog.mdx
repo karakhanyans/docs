@@ -12,64 +12,21 @@ The Changelog page displays a list of changes made to your application over time
 
 - Publication date
 - Tags (optional)
-- Detailed description
+- Detailed description (markdown supported)
 
 ## Usage
 
-### Viewing the Changelog
+### Creating a Changelog Entry
 
-Users can access the Changelog page to see a chronological list of updates and changes to the application.
+You can create a new changelog entry from Admin panel. Go to `Changelog` page and click on `Create new entry` button.
 
-### Structure
+### Route
 
-Each changelog entry is presented in a card-like format with the following elements:
+```php
+Route::get('changelog', [ChangelogController::class, 'index'])->name('changelog.index');
+```
 
-1. **Publication Date**: Displayed at the top of each entry in the format "Month Day, Year".
-2. **Tags** (optional): Colorful badges indicating the type or category of the change.
-3. **Description**: A detailed explanation of the changes, which can include formatted text and HTML.
+### View
 
-## Implementation
-
-### Backend
-
-Changelog entries are stored in the database and retrieved using a controller. Each entry should have the following fields:
-
-- `published_at`: The date when the changelog entry was published.
-- `tags`: A comma-separated list of tags (optional).
-- `description`: The main content of the changelog entry, which can include HTML.
-
-### Frontend
-
-The Changelog page is implemented using a Blade template (`resources/views/pages/changelog.blade.php`). It uses a responsive layout and is styled to match the overall design of the application.
-
-#### Key Components
-
-1. **Page Header**: Displays the title "Changelog" and a brief description.
-
-2. **Changelog List**: Iterates through the `$changelogs` collection to display each entry.
-
-3. **Entry Card**: Each changelog item is wrapped in a card-like container with:
-   - Publication date
-   - Tags (if present)
-   - Description content
-
-4. **Empty State**: If no changelog items are available, a message is displayed to inform the user.
-
-## Customization
-
-### Styling
-
-The Changelog page uses utility classes for styling. You can customize the appearance by modifying these classes or adding custom CSS.
-
-### Localization
-
-The page supports localization. Key strings like "Changelog" and "See what's new in our app" use the `__()` helper for easy translation.
-
-## Best Practices
-
-1. **Regular Updates**: Keep your changelog up-to-date with all significant changes to your application.
-2. **Clear Descriptions**: Write clear, concise descriptions for each change.
-3. **Use Tags**: Categorize changes with tags to help users quickly identify the nature of each update.
-4. **HTML in Descriptions**: You can use HTML in the description field for rich formatting, but ensure it's sanitized to prevent XSS attacks.
-
-
+```php
+resources/views/pages/changelog.blade.php

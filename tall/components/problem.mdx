@@ -1,0 +1,36 @@
+---
+title: Problem
+description: "<livewire:problem />"
+---
+
+<Frame>
+    <img src="/images/components/problem.jpg" />
+</Frame>    
+
+
+The Problem component is designed to present a challenge or issue that your product or service aims to solve. It consists of a heading, descriptive text, and a series of steps or points, each represented by an emoji and accompanying text.
+
+## Usage
+
+To use the Problem component, import it in your Vue file and pass the necessary props:
+
+```php
+@livewire('problem', [
+    'heading' => 'Empower Your Workflow: Unleashing the Full Potential of SaaS Integrations',
+    'text' => 'In today’s fast-paced digital landscape, integrating the right tools can make or break your productivity. With our cutting-edge SaaS platform, you’re not just adopting software—you’re transforming how your team collaborates, manages resources, and achieves success. Explore the possibilities and take your operations to the next level.',
+    'steps' => [
+        ['emoji' => '🔗', 'text' => 'Connect Your Tools: Effortlessly integrate with key platforms to centralize your workflow.'],
+        ['emoji' => '⚙️', 'text' => 'Automate Processes: Set up automated tasks that save time and reduce manual effort.'],
+        ['emoji' => '📊', 'text' => 'Gain Insights: Leverage powerful analytics to make data-driven decisions.'],
+        ['emoji' => '🚀', 'text' => 'Scale Seamlessly: Adapt and grow with enterprise-level solutions designed for flexibility.'],
+    ]
+])
+```
+
+### Props
+
+- `heading`: A string representing the main heading of the component.
+- `text`: A string representing the descriptive text of the component.
+- `steps`: An array of objects, each containing an emoji and a text string.
+
+

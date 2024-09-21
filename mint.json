@@ -72,6 +72,7 @@
       "pages": [
         {
           "group": "Payments",
+          "icon": "money-check-dollar",
           "pages": [
             "features/payments/lemonsqueezy",
             "features/payments/stripe",
@@ -81,6 +82,7 @@
         "features/admin",
         {
           "group": "SEO",
+          "icon": "magnifying-glass",
           "pages": [
             "features/seo/introduction",
             "features/seo/og-images",
@@ -89,7 +91,9 @@
           ]
         },
         "features/blog",
+        "features/changelog",
         "features/users",
+        "features/emails",
         "features/teams",
         "features/roles-and-permissions",
         "features/social-auth",
@@ -110,6 +114,7 @@
         "vilt/components/about",
         "vilt/components/content-with-image",
         "vilt/components/plans",
+        "vilt/components/problem",
         "vilt/components/testimonials",
         "vilt/components/faq",
         "vilt/components/cta",
@@ -131,6 +136,7 @@
         "tall/components/features",
         "tall/components/content-with-image",
         "tall/components/plans",
+        "tall/components/problem",
         "tall/components/testimonials",
         "tall/components/faq",
         "tall/components/cta",
