@@ -58,3 +58,14 @@ For other social auth integrations check [https://socialiteproviders.com/](https
 <Tip>
 Social Buttons can be found in `resources/js/Components/Social/SocialButtons.vue
 </Tip>
+
+
+## Turning off Social Auth
+
+If you decide that you don't want to allow your users to use social authentication then Larafast offers you the option to be able to disable all social logins through the configuration.
+
+In your `.env` file find the `AUTH_USE_SOCIAL_AUTH` option and set it to default.
+
+```dotenv .env
+AUTH_USE_SOCIAL_AUTH=false
+```
