@@ -21,7 +21,7 @@ To use OpenAI API completion, you can use the instance of `OpenAIService`.
 ```php
 use App\Services\OpenAIService;
 
-$openai = new OpenAIService();
+$openai = app(OpenAIService::class);
 $response = $openai->completion('Write recipe based on the given ingredients: 1 cup of flour, 2 eggs, 1 cup of sugar');
 
 // You can also pass the model name
@@ -38,7 +38,7 @@ To create images using OpenAI API, you can use:
 ```php
 use App\Services\OpenAIService;
 
-$openai = new OpenAIService();
+$openai = app(OpenAIService::class);
 $response = $openai->image('A beautiful sunset over the mountains');
 ```
 
@@ -49,7 +49,7 @@ To create an audio from text using OpenAI API, you can use:
 ```php
 use App\Services\OpenAIService;
 
-$openai = new OpenAIService();
+$openai = app(OpenAIService::class);
 $response = $openai->textToSpeech('Hello, how are you?');
 ```
 

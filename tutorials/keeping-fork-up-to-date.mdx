@@ -4,6 +4,10 @@ description: How to keep fork up to date with the original repository.
 icon: 'clock'
 ---
 
+<Note>
+    If you installed Larafast via Larafast Installer, you don't need this step. Installer already did it for you.
+</Note>
+
 It's important to keep your fork up-to-date with the original repository. This ensures that your fork has the latest changes and features. This guide will show you how to keep your fork up-to-date with the original repository.
 
 ## Fork the repository
@@ -27,19 +31,25 @@ git clone git@github.com:[your-fork-name].git
 ## Add the original repository as a remote
 
 ```bash
-git remote add upstream https://github.com/karakhanyans-tools/larafast.git
+git remote add upstream git@github.com:karakhanyans-tools/larafast.git
 ```
 
 For TALL stack:
 
 ```bash
-git remote add upstream https://github.com/karakhanyans-tools/larafast-tall.git
+git remote add upstream git@github.com:karakhanyans-tools/larafast-tall.git
 ```
 
 For Directories:
 
 ```bash
-git remote add upstream https://github.com/karakhanyans-tools/larafast-directories.git
+git remote add upstream git@github.com:karakhanyans-tools/larafast-directories.git
+```
+
+For API:
+
+```bash
+git remote add upstream git@github.com:karakhanyans-tools/larafast-rest-api.git
 ```
 
 ## Fetch the latest changes from the original repository
