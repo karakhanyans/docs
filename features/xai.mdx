@@ -1,0 +1,34 @@
+---
+title: xAI API (Twitter)
+description: xAI API (Twitter) Docs
+icon: 'x'
+---
+
+Larafast provides a simple way to integrate xAI API with Laravel.
+
+## Installation
+
+1. Create an account on [xAI](https://accounts.x.ai/account)
+2. Create your API key from the dashboard from [API Keys](https://accounts.x.ai/api-keys)
+3. Add your API key to your `.env` file as `XAI_KEY=your-api-key`
+
+That's it, your project is ready to use xAI API.
+
+## Usage
+
+To use xAI service, you can create an instance of `XAIService` and use the following methods to interact with xAI API.
+
+### For text completion
+```php
+use App\Services\XAIService;
+
+Route::get('/xai', function (XAIService $xai) {
+    return $xai->completion('Hello, how are you?');
+});
+
+or
+
+```php
+$xai = app(XAIService::class);
+$xai->completion('Hello, how are you?');
+```

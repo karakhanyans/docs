@@ -99,7 +99,8 @@
         "features/social-auth",
         "features/magic-links",
         "features/database",
-        "features/openai"
+        "features/openai",
+        "features/xai"
       ]
     },
     {
