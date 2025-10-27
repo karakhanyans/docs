@@ -1,0 +1,866 @@
+---
+title: SaaS Subscription Platform
+description: Building a multi-tenant SaaS application with usage tracking
+icon: 'chart-line'
+---
+
+## Real-World Scenario
+
+You're building a **SaaS platform** where companies subscribe to use your software. Think tools like Slack, Notion, or Trello. Each company (team) needs to:
+- Track their subscription and usage limits
+- Monitor API usage and quota consumption
+- Manage team members and roles
+- View analytics and insights
+- Store application-specific data
+
+This example shows a complete, production-ready SaaS implementation with usage tracking, quota enforcement, and subscription management.
+
+## The Business Model
+
+**SaaS Structure:**
+- Each company gets their own workspace (team)
+- Multiple pricing tiers with different feature limits
+- Usage-based quota tracking (API calls, storage, etc.)
+- Per-team billing with automatic quota resets
+- Self-service upgrade/downgrade
+
+**What Teams Get:**
+- Dedicated workspace for their company
+- Configurable usage limits based on plan
+- Real-time usage monitoring
+- Team collaboration features
+- API access with rate limiting
+
+## Database Structure
+
+### 1. Subscriptions Table (Built-in)
+
+Laravel Cashier provides this, but here's what it tracks:
+
+```php
+Schema::table('subscriptions', function (Blueprint $table) {
+    // Cashier columns (already exists)
+    $table->id();
+    $table->foreignId('team_id');
+    $table->string('type');  // 'default'
+    $table->string('stripe_id')->unique();
+    $table->string('stripe_status');
+    $table->string('stripe_price')->nullable();
+    $table->integer('quantity')->nullable();
+    $table->timestamp('trial_ends_at')->nullable();
+    $table->timestamp('ends_at')->nullable();
+    $table->timestamps();
+});
+```
+
+### 2. Usage Metrics Table
+
+Track consumption for quota enforcement:
+
+```bash
+php artisan make:migration create_usage_metrics_table
+```
+
+```php
+Schema::create('usage_metrics', function (Blueprint $table) {
+    $table->id();
+    $table->foreignId('team_id')->constrained()->cascadeOnDelete();
+    $table->enum('metric_type', ['api_calls', 'storage_mb', 'users', 'projects', 'exports']);
+    $table->unsignedBigInteger('current_usage')->default(0);
+    $table->unsignedBigInteger('quota_limit');  // From their plan
+    $table->date('period_start');
+    $table->date('period_end');
+    $table->timestamp('last_reset_at')->nullable();
+    $table->timestamps();
+
+    $table->unique(['team_id', 'metric_type', 'period_start']);
+    $table->index(['team_id', 'metric_type']);
+});
+```
+
+### 3. API Keys Table
+
+For programmatic access to your SaaS platform:
+
+```bash
+php artisan make:migration create_api_keys_table
+```
+
+```php
+Schema::create('api_keys', function (Blueprint $table) {
+    $table->id();
+    $table->foreignId('team_id')->constrained()->cascadeOnDelete();
+    $table->foreignId('created_by')->constrained('users');
+    $table->string('name');
+    $table->string('key', 64)->unique();  // Hashed
+    $table->text('scopes')->nullable();  // JSON array of permissions
+    $table->timestamp('last_used_at')->nullable();
+    $table->timestamp('expires_at')->nullable();
+    $table->boolean('is_active')->default(true);
+    $table->timestamps();
+
+    $table->index(['team_id', 'is_active']);
+});
+```
+
+### 4. Activity Logs Table
+
+Track important actions for audit trails:
+
+```bash
+php artisan make:migration create_activity_logs_table
+```
+
+```php
+Schema::create('activity_logs', function (Blueprint $table) {
+    $table->id();
+    $table->foreignId('team_id')->constrained()->cascadeOnDelete();
+    $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
+    $table->string('api_key_id')->nullable();  // If via API
+    $table->string('action');  // 'created', 'updated', 'deleted', 'exported'
+    $table->string('resource_type');  // 'project', 'user', 'report'
+    $table->unsignedBigInteger('resource_id')->nullable();
+    $table->json('metadata')->nullable();  // Additional context
+    $table->ipAddress('ip_address')->nullable();
+    $table->text('user_agent')->nullable();
+    $table->timestamps();
+
+    $table->index(['team_id', 'created_at']);
+    $table->index(['team_id', 'action']);
+    $table->index(['team_id', 'resource_type']);
+});
+```
+
+## Complete Model Implementation
+
+### UsageMetric Model with Quota Enforcement
+
+```php
+<?php
+
+namespace App\Models;
+
+use Filament\Facades\Filament;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class UsageMetric extends Model
+{
+    protected $fillable = [
+        'team_id',
+        'metric_type',
+        'current_usage',
+        'quota_limit',
+        'period_start',
+        'period_end',
+        'last_reset_at',
+    ];
+
+    protected $casts = [
+        'current_usage' => 'integer',
+        'quota_limit' => 'integer',
+        'period_start' => 'date',
+        'period_end' => 'date',
+        'last_reset_at' => 'datetime',
+    ];
+
+    // Automatic team scoping
+    protected static function booted(): void
+    {
+        static::addGlobalScope('team', function (Builder $builder) {
+            if (Filament::getTenant()) {
+                $builder->where('team_id', Filament::getTenant()->id);
+            }
+        });
+
+        static::creating(function (UsageMetric $metric) {
+            if (!$metric->team_id && Filament::getTenant()) {
+                $metric->team_id = Filament::getTenant()->id;
+            }
+        });
+    }
+
+    public function team(): BelongsTo
+    {
+        return $this->belongsTo(Team::class);
+    }
+
+    // Business Logic
+
+    /**
+     * Increment usage and check if quota exceeded
+     */
+    public function increment(int $amount = 1): bool
+    {
+        // Check if period expired
+        if ($this->period_end->isPast()) {
+            $this->resetUsage();
+        }
+
+        // Check if would exceed quota
+        if ($this->current_usage + $amount > $this->quota_limit) {
+            return false;  // Quota exceeded
+        }
+
+        $this->increment('current_usage', $amount);
+        return true;
+    }
+
+    /**
+     * Reset usage for new billing period
+     */
+    public function resetUsage(): void
+    {
+        $this->update([
+            'current_usage' => 0,
+            'period_start' => now(),
+            'period_end' => now()->addMonth(),
+            'last_reset_at' => now(),
+        ]);
+    }
+
+    /**
+     * Check if quota is exceeded
+     */
+    public function isQuotaExceeded(): bool
+    {
+        return $this->current_usage >= $this->quota_limit;
+    }
+
+    /**
+     * Get usage percentage
+     */
+    public function getUsagePercentageAttribute(): float
+    {
+        if ($this->quota_limit === 0) {
+            return 0;
+        }
+
+        return round(($this->current_usage / $this->quota_limit) * 100, 2);
+    }
+
+    /**
+     * Get remaining quota
+     */
+    public function getRemainingQuotaAttribute(): int
+    {
+        return max(0, $this->quota_limit - $this->current_usage);
+    }
+
+    /**
+     * Get warning color based on usage
+     */
+    public function getUsageColorAttribute(): string
+    {
+        return match(true) {
+            $this->usage_percentage >= 100 => 'danger',
+            $this->usage_percentage >= 80 => 'warning',
+            $this->usage_percentage >= 50 => 'info',
+            default => 'success',
+        };
+    }
+
+    /**
+     * Create or update usage metric for team
+     */
+    public static function trackUsage(Team $team, string $metricType, int $amount = 1): bool
+    {
+        $metric = static::firstOrCreate([
+            'team_id' => $team->id,
+            'metric_type' => $metricType,
+            'period_start' => now()->startOfMonth(),
+        ], [
+            'current_usage' => 0,
+            'quota_limit' => static::getQuotaForPlan($team, $metricType),
+            'period_end' => now()->endOfMonth(),
+        ]);
+
+        return $metric->increment($amount);
+    }
+
+    /**
+     * Get quota limit based on team's subscription plan
+     */
+    protected static function getQuotaForPlan(Team $team, string $metricType): int
+    {
+        // Get team's current plan
+        $subscription = $team->subscription('default');
+
+        if (!$subscription) {
+            return static::getFreePlanQuota($metricType);
+        }
+
+        // Map Stripe price ID to quotas
+        return match($subscription->stripe_price) {
+            'price_starter' => static::getStarterQuota($metricType),
+            'price_professional' => static::getProfessionalQuota($metricType),
+            'price_enterprise' => static::getEnterpriseQuota($metricType),
+            default => static::getFreePlanQuota($metricType),
+        };
+    }
+
+    protected static function getFreePlanQuota(string $metricType): int
+    {
+        return match($metricType) {
+            'api_calls' => 1000,
+            'storage_mb' => 100,
+            'users' => 3,
+            'projects' => 5,
+            'exports' => 10,
+            default => 0,
+        };
+    }
+
+    protected static function getStarterQuota(string $metricType): int
+    {
+        return match($metricType) {
+            'api_calls' => 10000,
+            'storage_mb' => 1000,
+            'users' => 10,
+            'projects' => 25,
+            'exports' => 100,
+            default => 0,
+        };
+    }
+
+    protected static function getProfessionalQuota(string $metricType): int
+    {
+        return match($metricType) {
+            'api_calls' => 100000,
+            'storage_mb' => 10000,
+            'users' => 50,
+            'projects' => 100,
+            'exports' => 1000,
+            default => 0,
+        };
+    }
+
+    protected static function getEnterpriseQuota(string $metricType): int
+    {
+        return match($metricType) {
+            'api_calls' => 1000000,
+            'storage_mb' => 100000,
+            'users' => 500,
+            'projects' => 1000,
+            'exports' => 10000,
+            default => 0,
+        };
+    }
+}
+```
+
+### ApiKey Model with Secure Key Management
+
+```php
+<?php
+
+namespace App\Models;
+
+use Filament\Facades\Filament;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
+
+class ApiKey extends Model
+{
+    protected $fillable = [
+        'team_id',
+        'created_by',
+        'name',
+        'key',
+        'scopes',
+        'last_used_at',
+        'expires_at',
+        'is_active',
+    ];
+
+    protected $casts = [
+        'scopes' => 'array',
+        'last_used_at' => 'datetime',
+        'expires_at' => 'datetime',
+        'is_active' => 'boolean',
+    ];
+
+    protected $hidden = ['key'];
+
+    protected static function booted(): void
+    {
+        static::addGlobalScope('team', function (Builder $builder) {
+            if (Filament::getTenant()) {
+                $builder->where('team_id', Filament::getTenant()->id);
+            }
+        });
+
+        static::creating(function (ApiKey $apiKey) {
+            if (!$apiKey->team_id && Filament::getTenant()) {
+                $apiKey->team_id = Filament::getTenant()->id;
+            }
+
+            // Generate secure key
+            if (!$apiKey->key) {
+                $apiKey->key = hash('sha256', Str::random(64));
+            }
+        });
+    }
+
+    public function team(): BelongsTo
+    {
+        return $this->belongsTo(Team::class);
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    // Business Logic
+
+    /**
+     * Check if key is valid and active
+     */
+    public function isValid(): bool
+    {
+        return $this->is_active
+            && (!$this->expires_at || $this->expires_at->isFuture());
+    }
+
+    /**
+     * Check if key has specific scope
+     */
+    public function hasScope(string $scope): bool
+    {
+        return in_array($scope, $this->scopes ?? []);
+    }
+
+    /**
+     * Update last used timestamp
+     */
+    public function recordUsage(): void
+    {
+        $this->update(['last_used_at' => now()]);
+    }
+
+    /**
+     * Revoke the API key
+     */
+    public function revoke(): void
+    {
+        $this->update(['is_active' => false]);
+    }
+
+    /**
+     * Check if key is expired
+     */
+    public function isExpired(): bool
+    {
+        return $this->expires_at && $this->expires_at->isPast();
+    }
+
+    /**
+     * Get masked key for display (first 8 chars + ****)
+     */
+    public function getMaskedKeyAttribute(): string
+    {
+        return substr($this->key, 0, 8) . '****';
+    }
+}
+```
+
+### ActivityLog Model
+
+```php
+<?php
+
+namespace App\Models;
+
+use Filament\Facades\Filament;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class ActivityLog extends Model
+{
+    protected $fillable = [
+        'team_id',
+        'user_id',
+        'api_key_id',
+        'action',
+        'resource_type',
+        'resource_id',
+        'metadata',
+        'ip_address',
+        'user_agent',
+    ];
+
+    protected $casts = [
+        'metadata' => 'array',
+    ];
+
+    protected static function booted(): void
+    {
+        static::addGlobalScope('team', function (Builder $builder) {
+            if (Filament::getTenant()) {
+                $builder->where('team_id', Filament::getTenant()->id);
+            }
+        });
+    }
+
+    public function team(): BelongsTo
+    {
+        return $this->belongsTo(Team::class);
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Get human-readable description
+     */
+    public function getDescriptionAttribute(): string
+    {
+        $userName = $this->user ? $this->user->name : 'API';
+
+        return "{$userName} {$this->action} {$this->resource_type}"
+            . ($this->resource_id ? " #{$this->resource_id}" : '');
+    }
+
+    /**
+     * Log an activity
+     */
+    public static function logActivity(
+        string $action,
+        string $resourceType,
+        ?int $resourceId = null,
+        ?array $metadata = null
+    ): self {
+        return static::create([
+            'team_id' => Filament::getTenant()->id,
+            'user_id' => auth()->id(),
+            'action' => $action,
+            'resource_type' => $resourceType,
+            'resource_id' => $resourceId,
+            'metadata' => $metadata,
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+        ]);
+    }
+}
+```
+
+## Filament Resources
+
+### Usage Metrics Widget (Dashboard)
+
+```php
+<?php
+
+namespace App\Filament\App\Widgets;
+
+use App\Models\UsageMetric;
+use Filament\Widgets\StatsOverviewWidget as BaseWidget;
+use Filament\Widgets\StatsOverviewWidget\Stat;
+
+class UsageOverviewWidget extends BaseWidget
+{
+    protected function getStats(): array
+    {
+        $metrics = UsageMetric::where('period_start', '<=', now())
+            ->where('period_end', '>=', now())
+            ->get()
+            ->keyBy('metric_type');
+
+        return [
+            $this->createStat(
+                'API Calls',
+                $metrics->get('api_calls')
+            ),
+
+            $this->createStat(
+                'Storage',
+                $metrics->get('storage_mb'),
+                'MB'
+            ),
+
+            $this->createStat(
+                'Team Members',
+                $metrics->get('users'),
+                'users'
+            ),
+
+            $this->createStat(
+                'Projects',
+                $metrics->get('projects')
+            ),
+        ];
+    }
+
+    protected function createStat(string $label, ?UsageMetric $metric, string $suffix = ''): Stat
+    {
+        if (!$metric) {
+            return Stat::make($label, 'N/A');
+        }
+
+        $value = $suffix === 'MB'
+            ? number_format($metric->current_usage) . ' MB'
+            : number_format($metric->current_usage);
+
+        return Stat::make($label, $value)
+            ->description("{$metric->remaining_quota} remaining of {$metric->quota_limit}")
+            ->descriptionIcon($metric->isQuotaExceeded() ? 'heroicon-o-exclamation-triangle' : 'heroicon-o-check-circle')
+            ->color($metric->usage_color)
+            ->chart($this->generateUsageChart($metric));
+    }
+
+    protected function generateUsageChart(UsageMetric $metric): array
+    {
+        // Simple chart showing progress toward quota
+        $percentage = $metric->usage_percentage;
+
+        return array_fill(0, 7, min(100, $percentage));
+    }
+}
+```
+
+### API Keys Resource
+
+```php
+<?php
+
+namespace App\Filament\App\Resources;
+
+use App\Models\ApiKey;
+use Filament\Forms;
+use Filament\Resources\Resource;
+use Filament\Tables;
+use Filament\Tables\Table;
+use Illuminate\Support\Str;
+
+class ApiKeyResource extends Resource
+{
+    protected static ?string $model = ApiKey::class;
+    protected static ?string $navigationIcon = 'heroicon-o-key';
+    protected static ?int $navigationSort = 5;
+
+    public static function form(Forms\Form $form): Forms\Form
+    {
+        return $form
+            ->schema([
+                Forms\Components\TextInput::make('name')
+                    ->required()
+                    ->maxLength(255)
+                    ->helperText('A descriptive name for this API key'),
+
+                Forms\Components\TagsInput::make('scopes')
+                    ->placeholder('Add scopes')
+                    ->suggestions([
+                        'read:projects',
+                        'write:projects',
+                        'read:users',
+                        'admin',
+                    ])
+                    ->helperText('Permissions this key will have'),
+
+                Forms\Components\DateTimePicker::make('expires_at')
+                    ->label('Expiration Date')
+                    ->nullable()
+                    ->helperText('Leave empty for no expiration')
+                    ->minDate(now()),
+
+                Forms\Components\Toggle::make('is_active')
+                    ->label('Active')
+                    ->default(true),
+            ]);
+    }
+
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                Tables\Columns\TextColumn::make('name')
+                    ->searchable()
+                    ->sortable()
+                    ->weight('bold'),
+
+                Tables\Columns\TextColumn::make('masked_key')
+                    ->label('Key')
+                    ->copyable()
+                    ->copyMessage('Key copied!')
+                    ->copyMessageDuration(1500),
+
+                Tables\Columns\BadgeColumn::make('scopes')
+                    ->label('Scopes')
+                    ->separator(','),
+
+                Tables\Columns\IconColumn::make('is_active')
+                    ->label('Status')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('heroicon-o-x-circle')
+                    ->trueColor('success')
+                    ->falseColor('danger'),
+
+                Tables\Columns\TextColumn::make('last_used_at')
+                    ->dateTime('M d, Y H:i')
+                    ->sortable()
+                    ->placeholder('Never used'),
+
+                Tables\Columns\TextColumn::make('expires_at')
+                    ->date('M d, Y')
+                    ->sortable()
+                    ->color(fn (ApiKey $record) =>
+                        $record->isExpired() ? 'danger' : null
+                    )
+                    ->placeholder('No expiration'),
+
+                Tables\Columns\TextColumn::make('creator.name')
+                    ->label('Created By')
+                    ->sortable(),
+            ])
+            ->filters([
+                Tables\Filters\TernaryFilter::make('is_active')
+                    ->label('Active')
+                    ->boolean()
+                    ->trueLabel('Active only')
+                    ->falseLabel('Inactive only')
+                    ->native(false),
+            ])
+            ->actions([
+                Tables\Actions\Action::make('revoke')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->visible(fn (ApiKey $record) => $record->is_active)
+                    ->action(fn (ApiKey $record) => $record->revoke()),
+
+                Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make(),
+            ])
+            ->defaultSort('created_at', 'desc');
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\ListApiKeys::route('/'),
+            'create' => Pages\CreateApiKey::route('/create'),
+            'edit' => Pages\EditApiKey::route('/{record}/edit'),
+        ];
+    }
+}
+```
+
+## Middleware for Quota Enforcement
+
+Create middleware to check quotas before allowing actions:
+
+```php
+<?php
+
+namespace App\Http\Middleware;
+
+use App\Models\UsageMetric;
+use Closure;
+use Filament\Facades\Filament;
+use Illuminate\Http\Request;
+
+class CheckApiQuota
+{
+    public function handle(Request $request, Closure $next, string $metricType = 'api_calls')
+    {
+        $team = Filament::getTenant();
+
+        if (!$team) {
+            return response()->json(['error' => 'Team not found'], 404);
+        }
+
+        // Get current usage metric
+        $metric = UsageMetric::where('team_id', $team->id)
+            ->where('metric_type', $metricType)
+            ->where('period_start', '<=', now())
+            ->where('period_end', '>=', now())
+            ->first();
+
+        if (!$metric) {
+            // Create metric if doesn't exist
+            UsageMetric::trackUsage($team, $metricType, 0);
+            return $next($request);
+        }
+
+        // Check if quota exceeded
+        if ($metric->isQuotaExceeded()) {
+            return response()->json([
+                'error' => 'Quota exceeded',
+                'message' => "You have reached your {$metricType} limit for this billing period.",
+                'quota_limit' => $metric->quota_limit,
+                'current_usage' => $metric->current_usage,
+                'resets_at' => $metric->period_end->toDateTimeString(),
+            ], 429);
+        }
+
+        // Track usage
+        $metric->increment(1);
+
+        return $next($request);
+    }
+}
+```
+
+Register in `bootstrap/app.php`:
+
+```php
+->withMiddleware(function (Middleware $middleware) {
+    $middleware->alias([
+        'quota' => \App\Http\Middleware\CheckApiQuota::class,
+    ]);
+})
+```
+
+Use in routes:
+
+```php
+Route::middleware(['auth:sanctum', 'quota:api_calls'])->group(function () {
+    Route::get('/api/projects', [ProjectController::class, 'index']);
+    Route::post('/api/projects', [ProjectController::class, 'store']);
+});
+```
+
+## Why This Example is Better
+
+### Real SaaS Features
+- ✅ Usage tracking with automatic quota enforcement
+- ✅ Multiple metric types (API calls, storage, users, etc.)
+- ✅ Automatic period resets for billing cycles
+- ✅ API key management with scopes and expiration
+- ✅ Activity logging for audit trails
+- ✅ Plan-based quota limits
+
+### Production-Ready Implementation
+- ✅ Secure API key hashing
+- ✅ Middleware for automatic quota checks
+- ✅ Visual quota indicators with color coding
+- ✅ Proper relationship management
+- ✅ Automatic team scoping on all models
+
+### Business Logic
+- ✅ Quota percentage calculations
+- ✅ Plan-based limit configuration
+- ✅ Expired key detection
+- ✅ Usage color indicators (green/yellow/red)
+- ✅ Automatic usage resets
+
+### User Experience
+- ✅ Real-time usage dashboard
+- ✅ Clear quota warnings at 80% and 100%
+- ✅ API key masking for security
+- ✅ Activity logs for transparency
+- ✅ One-click API key revocation
+
+## Next Steps
+
+- [Agency Client Portal](/multi-tenancy/examples/project-management) - Client project management
+- [CRM System](/multi-tenancy/examples/crm-system) - Customer relationship management
+- [Learning Platform](/multi-tenancy/examples/learning-platform) - Educational courses (coming soon)

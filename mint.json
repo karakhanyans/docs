@@ -56,7 +56,7 @@
       "pages": [
         "larafast-installer",
         "intro-vilt",
-        "intro-tall"
+        "intro-tall",
       ]
     },
     {
@@ -293,7 +293,10 @@
     {
       "group": "Examples",
       "pages": [
-        "multi-tenancy/examples/project-management"
+        "multi-tenancy/examples/project-management",
+        "multi-tenancy/examples/crm-system",
+        "multi-tenancy/examples/saas-platform",
+        "multi-tenancy/examples/learning-platform"
       ]
     }
   ],

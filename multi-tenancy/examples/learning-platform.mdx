@@ -1,0 +1,929 @@
+---
+title: Learning Management Platform
+description: Building an educational platform with courses and student progress tracking
+icon: 'graduation-cap'
+---
+
+## Real-World Scenario
+
+You're building an **online learning platform** where educational institutions, companies, or individual instructors create courses. Think Udemy for business, corporate training platforms, or school LMS systems. Each organization (team) needs to:
+- Create and manage courses and lessons
+- Enroll students and track their progress
+- Issue certificates upon course completion
+- View analytics and student performance
+- Manage instructors and content creators
+
+This example shows a complete, production-ready learning management system with progress tracking, quizzes, and certification.
+
+## The Business Model
+
+**Platform Structure:**
+- Each institution/company gets their own workspace (team)
+- Create unlimited courses with lessons and quizzes
+- Enroll students (team members) in specific courses
+- Track completion, scores, and issue certificates
+- Instructor roles can create/edit content
+
+**What Teams Get:**
+- Dedicated learning environment for their organization
+- Course creation and management tools
+- Student enrollment and progress tracking
+- Automated certificate generation
+- Analytics and reporting dashboard
+
+## Database Structure
+
+### 1. Courses Table
+
+Core course information:
+
+```bash
+php artisan make:migration create_courses_table
+```
+
+```php
+Schema::create('courses', function (Blueprint $table) {
+    $table->id();
+    $table->foreignId('team_id')->constrained()->cascadeOnDelete();
+    $table->foreignId('instructor_id')->constrained('users');
+    $table->string('title');
+    $table->text('description');
+    $table->text('learning_objectives')->nullable();
+    $table->string('thumbnail_path')->nullable();
+    $table->enum('difficulty', ['beginner', 'intermediate', 'advanced']);
+    $table->enum('status', ['draft', 'published', 'archived'])->default('draft');
+    $table->unsignedInteger('duration_minutes')->default(0);  // Total course duration
+    $table->boolean('is_featured')->default(false);
+    $table->unsignedInteger('passing_score')->default(70);  // Percentage required to pass
+    $table->timestamp('published_at')->nullable();
+    $table->timestamps();
+    $table->softDeletes();
+
+    $table->index(['team_id', 'status']);
+    $table->index(['team_id', 'instructor_id']);
+});
+```
+
+### 2. Lessons Table
+
+Individual lessons within courses:
+
+```bash
+php artisan make:migration create_lessons_table
+```
+
+```php
+Schema::create('lessons', function (Blueprint $table) {
+    $table->id();
+    $table->foreignId('team_id')->constrained()->cascadeOnDelete();
+    $table->foreignId('course_id')->constrained()->cascadeOnDelete();
+    $table->string('title');
+    $table->text('content');  // Markdown or HTML content
+    $table->enum('type', ['video', 'text', 'quiz', 'assignment']);
+    $table->string('video_url')->nullable();
+    $table->unsignedInteger('duration_minutes')->default(0);
+    $table->unsignedInteger('order')->default(0);
+    $table->boolean('is_free_preview')->default(false);
+    $table->timestamps();
+
+    $table->index(['team_id', 'course_id', 'order']);
+});
+```
+
+### 3. Enrollments Table
+
+Track student enrollments in courses:
+
+```bash
+php artisan make:migration create_enrollments_table
+```
+
+```php
+Schema::create('enrollments', function (Blueprint $table) {
+    $table->id();
+    $table->foreignId('team_id')->constrained()->cascadeOnDelete();
+    $table->foreignId('course_id')->constrained()->cascadeOnDelete();
+    $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+    $table->foreignId('enrolled_by')->nullable()->constrained('users');  // Who enrolled them
+    $table->enum('status', ['active', 'completed', 'dropped', 'expired'])->default('active');
+    $table->unsignedInteger('progress_percentage')->default(0);
+    $table->timestamp('started_at')->nullable();
+    $table->timestamp('completed_at')->nullable();
+    $table->timestamp('expires_at')->nullable();
+    $table->timestamps();
+
+    $table->unique(['team_id', 'course_id', 'user_id']);
+    $table->index(['team_id', 'user_id']);
+    $table->index(['team_id', 'status']);
+});
+```
+
+### 4. Lesson Progress Table
+
+Track completion of individual lessons:
+
+```bash
+php artisan make:migration create_lesson_progress_table
+```
+
+```php
+Schema::create('lesson_progress', function (Blueprint $table) {
+    $table->id();
+    $table->foreignId('team_id')->constrained()->cascadeOnDelete();
+    $table->foreignId('enrollment_id')->constrained()->cascadeOnDelete();
+    $table->foreignId('lesson_id')->constrained()->cascadeOnDelete();
+    $table->boolean('is_completed')->default(false);
+    $table->unsignedInteger('time_spent_seconds')->default(0);
+    $table->timestamp('started_at')->nullable();
+    $table->timestamp('completed_at')->nullable();
+    $table->timestamp('last_viewed_at')->nullable();
+    $table->timestamps();
+
+    $table->unique(['enrollment_id', 'lesson_id']);
+    $table->index(['team_id', 'lesson_id']);
+});
+```
+
+### 5. Quiz Results Table
+
+Store quiz attempts and scores:
+
+```bash
+php artisan make:migration create_quiz_results_table
+```
+
+```php
+Schema::create('quiz_results', function (Blueprint $table) {
+    $table->id();
+    $table->foreignId('team_id')->constrained()->cascadeOnDelete();
+    $table->foreignId('enrollment_id')->constrained()->cascadeOnDelete();
+    $table->foreignId('lesson_id')->constrained()->cascadeOnDelete();  // Quiz lesson
+    $table->json('answers');  // Student's answers
+    $table->unsignedInteger('score');  // Percentage 0-100
+    $table->unsignedInteger('questions_total');
+    $table->unsignedInteger('questions_correct');
+    $table->boolean('passed');
+    $table->unsignedInteger('attempt_number')->default(1);
+    $table->unsignedInteger('time_taken_seconds');
+    $table->timestamp('submitted_at');
+    $table->timestamps();
+
+    $table->index(['team_id', 'enrollment_id']);
+    $table->index(['team_id', 'lesson_id']);
+});
+```
+
+### 6. Certificates Table
+
+Generate and store course completion certificates:
+
+```bash
+php artisan make:migration create_certificates_table
+```
+
+```php
+Schema::create('certificates', function (Blueprint $table) {
+    $table->id();
+    $table->foreignId('team_id')->constrained()->cascadeOnDelete();
+    $table->foreignId('enrollment_id')->constrained()->cascadeOnDelete();
+    $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+    $table->foreignId('course_id')->constrained()->cascadeOnDelete();
+    $table->string('certificate_number')->unique();  // e.g., CERT-2024-001234
+    $table->string('pdf_path')->nullable();
+    $table->unsignedInteger('final_score');  // Overall course score
+    $table->date('issued_at');
+    $table->date('expires_at')->nullable();  // For certifications that expire
+    $table->timestamps();
+
+    $table->index(['team_id', 'user_id']);
+    $table->index('certificate_number');
+});
+```
+
+## Complete Model Implementation
+
+### Course Model with Enrollment Logic
+
+```php
+<?php
+
+namespace App\Models;
+
+use Filament\Facades\Filament;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+class Course extends Model
+{
+    use SoftDeletes;
+
+    protected $fillable = [
+        'team_id',
+        'instructor_id',
+        'title',
+        'description',
+        'learning_objectives',
+        'thumbnail_path',
+        'difficulty',
+        'status',
+        'duration_minutes',
+        'is_featured',
+        'passing_score',
+        'published_at',
+    ];
+
+    protected $casts = [
+        'duration_minutes' => 'integer',
+        'is_featured' => 'boolean',
+        'passing_score' => 'integer',
+        'published_at' => 'datetime',
+    ];
+
+    protected static function booted(): void
+    {
+        static::addGlobalScope('team', function (Builder $builder) {
+            if (Filament::getTenant()) {
+                $builder->where('team_id', Filament::getTenant()->id);
+            }
+        });
+
+        static::creating(function (Course $course) {
+            if (!$course->team_id && Filament::getTenant()) {
+                $course->team_id = Filament::getTenant()->id;
+            }
+        });
+
+        // Auto-publish when status changes to published
+        static::updating(function (Course $course) {
+            if ($course->isDirty('status') && $course->status === 'published' && !$course->published_at) {
+                $course->published_at = now();
+            }
+        });
+    }
+
+    // Relationships
+
+    public function team(): BelongsTo
+    {
+        return $this->belongsTo(Team::class);
+    }
+
+    public function instructor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'instructor_id');
+    }
+
+    public function lessons(): HasMany
+    {
+        return $this->hasMany(Lesson::class)->orderBy('order');
+    }
+
+    public function enrollments(): HasMany
+    {
+        return $this->hasMany(Enrollment::class);
+    }
+
+    public function certificates(): HasMany
+    {
+        return $this->hasMany(Certificate::class);
+    }
+
+    // Business Logic
+
+    /**
+     * Check if course is published and available
+     */
+    public function isPublished(): bool
+    {
+        return $this->status === 'published' && $this->published_at !== null;
+    }
+
+    /**
+     * Get total number of students enrolled
+     */
+    public function getStudentCountAttribute(): int
+    {
+        return $this->enrollments()->where('status', 'active')->count();
+    }
+
+    /**
+     * Get completion rate percentage
+     */
+    public function getCompletionRateAttribute(): float
+    {
+        $total = $this->enrollments()->count();
+
+        if ($total === 0) {
+            return 0;
+        }
+
+        $completed = $this->enrollments()->where('status', 'completed')->count();
+
+        return round(($completed / $total) * 100, 1);
+    }
+
+    /**
+     * Get average score across all completions
+     */
+    public function getAverageScoreAttribute(): ?float
+    {
+        $certificates = $this->certificates()->avg('final_score');
+
+        return $certificates ? round($certificates, 1) : null;
+    }
+
+    /**
+     * Get total lesson count
+     */
+    public function getLessonCountAttribute(): int
+    {
+        return $this->lessons()->count();
+    }
+
+    /**
+     * Check if user is enrolled
+     */
+    public function isUserEnrolled(User $user): bool
+    {
+        return $this->enrollments()
+            ->where('user_id', $user->id)
+            ->where('status', 'active')
+            ->exists();
+    }
+
+    /**
+     * Enroll a user in this course
+     */
+    public function enrollUser(User $user, ?User $enrolledBy = null): Enrollment
+    {
+        return $this->enrollments()->create([
+            'team_id' => $this->team_id,
+            'user_id' => $user->id,
+            'enrolled_by' => $enrolledBy?->id ?? auth()->id(),
+            'started_at' => now(),
+        ]);
+    }
+
+    /**
+     * Get status badge color
+     */
+    public function getStatusColorAttribute(): string
+    {
+        return match($this->status) {
+            'published' => 'success',
+            'draft' => 'warning',
+            'archived' => 'danger',
+            default => 'gray',
+        };
+    }
+
+    /**
+     * Get difficulty badge color
+     */
+    public function getDifficultyColorAttribute(): string
+    {
+        return match($this->difficulty) {
+            'beginner' => 'success',
+            'intermediate' => 'warning',
+            'advanced' => 'danger',
+            default => 'gray',
+        };
+    }
+}
+```
+
+### Enrollment Model with Progress Tracking
+
+```php
+<?php
+
+namespace App\Models;
+
+use Filament\Facades\Filament;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class Enrollment extends Model
+{
+    protected $fillable = [
+        'team_id',
+        'course_id',
+        'user_id',
+        'enrolled_by',
+        'status',
+        'progress_percentage',
+        'started_at',
+        'completed_at',
+        'expires_at',
+    ];
+
+    protected $casts = [
+        'progress_percentage' => 'integer',
+        'started_at' => 'datetime',
+        'completed_at' => 'datetime',
+        'expires_at' => 'datetime',
+    ];
+
+    protected static function booted(): void
+    {
+        static::addGlobalScope('team', function (Builder $builder) {
+            if (Filament::getTenant()) {
+                $builder->where('team_id', Filament::getTenant()->id);
+            }
+        });
+
+        static::creating(function (Enrollment $enrollment) {
+            if (!$enrollment->team_id && Filament::getTenant()) {
+                $enrollment->team_id = Filament::getTenant()->id;
+            }
+
+            if (!$enrollment->started_at) {
+                $enrollment->started_at = now();
+            }
+        });
+    }
+
+    // Relationships
+
+    public function team(): BelongsTo
+    {
+        return $this->belongsTo(Team::class);
+    }
+
+    public function course(): BelongsTo
+    {
+        return $this->belongsTo(Course::class);
+    }
+
+    public function student(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function enrolledBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'enrolled_by');
+    }
+
+    public function lessonProgress(): HasMany
+    {
+        return $this->hasMany(LessonProgress::class);
+    }
+
+    public function quizResults(): HasMany
+    {
+        return $this->hasMany(QuizResult::class);
+    }
+
+    public function certificate(): HasOne
+    {
+        return $this->hasOne(Certificate::class);
+    }
+
+    // Business Logic
+
+    /**
+     * Calculate and update progress percentage
+     */
+    public function updateProgress(): void
+    {
+        $totalLessons = $this->course->lessons()->count();
+
+        if ($totalLessons === 0) {
+            return;
+        }
+
+        $completedLessons = $this->lessonProgress()
+            ->where('is_completed', true)
+            ->count();
+
+        $progressPercentage = round(($completedLessons / $totalLessons) * 100);
+
+        $this->update(['progress_percentage' => $progressPercentage]);
+
+        // Check if course is complete
+        if ($progressPercentage === 100 && $this->status === 'active') {
+            $this->markAsCompleted();
+        }
+    }
+
+    /**
+     * Mark enrollment as completed
+     */
+    public function markAsCompleted(): void
+    {
+        $averageScore = $this->calculateFinalScore();
+
+        $this->update([
+            'status' => 'completed',
+            'completed_at' => now(),
+            'progress_percentage' => 100,
+        ]);
+
+        // Issue certificate if passing score met
+        if ($averageScore >= $this->course->passing_score) {
+            $this->issueCertificate($averageScore);
+        }
+    }
+
+    /**
+     * Calculate final score based on all quiz results
+     */
+    public function calculateFinalScore(): int
+    {
+        $quizResults = $this->quizResults()
+            ->groupBy('lesson_id')
+            ->selectRaw('lesson_id, MAX(score) as best_score')
+            ->get();
+
+        if ($quizResults->isEmpty()) {
+            return 0;
+        }
+
+        $averageScore = $quizResults->avg('best_score');
+
+        return (int) round($averageScore);
+    }
+
+    /**
+     * Issue certificate for course completion
+     */
+    protected function issueCertificate(int $finalScore): Certificate
+    {
+        return Certificate::create([
+            'team_id' => $this->team_id,
+            'enrollment_id' => $this->id,
+            'user_id' => $this->user_id,
+            'course_id' => $this->course_id,
+            'certificate_number' => Certificate::generateCertificateNumber(),
+            'final_score' => $finalScore,
+            'issued_at' => now(),
+        ]);
+    }
+
+    /**
+     * Check if enrollment is expired
+     */
+    public function isExpired(): bool
+    {
+        return $this->expires_at && $this->expires_at->isPast();
+    }
+
+    /**
+     * Get time spent on course (sum of all lesson progress)
+     */
+    public function getTotalTimeSpentAttribute(): int
+    {
+        return $this->lessonProgress()->sum('time_spent_seconds');
+    }
+
+    /**
+     * Get formatted time spent (e.g., "2h 30m")
+     */
+    public function getFormattedTimeSpentAttribute(): string
+    {
+        $seconds = $this->total_time_spent;
+        $hours = floor($seconds / 3600);
+        $minutes = floor(($seconds % 3600) / 60);
+
+        if ($hours > 0) {
+            return "{$hours}h {$minutes}m";
+        }
+
+        return "{$minutes}m";
+    }
+
+    /**
+     * Get status badge color
+     */
+    public function getStatusColorAttribute(): string
+    {
+        return match($this->status) {
+            'completed' => 'success',
+            'active' => 'primary',
+            'dropped' => 'warning',
+            'expired' => 'danger',
+            default => 'gray',
+        };
+    }
+}
+```
+
+### Certificate Model
+
+```php
+<?php
+
+namespace App\Models;
+
+use Filament\Facades\Filament;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class Certificate extends Model
+{
+    protected $fillable = [
+        'team_id',
+        'enrollment_id',
+        'user_id',
+        'course_id',
+        'certificate_number',
+        'pdf_path',
+        'final_score',
+        'issued_at',
+        'expires_at',
+    ];
+
+    protected $casts = [
+        'final_score' => 'integer',
+        'issued_at' => 'date',
+        'expires_at' => 'date',
+    ];
+
+    protected static function booted(): void
+    {
+        static::addGlobalScope('team', function (Builder $builder) {
+            if (Filament::getTenant()) {
+                $builder->where('team_id', Filament::getTenant()->id);
+            }
+        });
+    }
+
+    public function team(): BelongsTo
+    {
+        return $this->belongsTo(Team::class);
+    }
+
+    public function enrollment(): BelongsTo
+    {
+        return $this->belongsTo(Enrollment::class);
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function course(): BelongsTo
+    {
+        return $this->belongsTo(Course::class);
+    }
+
+    /**
+     * Generate unique certificate number
+     */
+    public static function generateCertificateNumber(): string
+    {
+        $year = now()->year;
+        $random = str_pad(mt_rand(1, 999999), 6, '0', STR_PAD_LEFT);
+
+        return "CERT-{$year}-{$random}";
+    }
+
+    /**
+     * Check if certificate is expired
+     */
+    public function isExpired(): bool
+    {
+        return $this->expires_at && $this->expires_at->isPast();
+    }
+
+    /**
+     * Check if certificate is valid
+     */
+    public function isValid(): bool
+    {
+        return !$this->isExpired();
+    }
+}
+```
+
+## Filament Resources
+
+### Course Resource
+
+```php
+<?php
+
+namespace App\Filament\App\Resources;
+
+use App\Models\Course;
+use Filament\Forms;
+use Filament\Resources\Resource;
+use Filament\Tables;
+use Filament\Tables\Table;
+
+class CourseResource extends Resource
+{
+    protected static ?string $model = Course::class;
+    protected static ?string $navigationIcon = 'heroicon-o-academic-cap';
+    protected static ?int $navigationSort = 1;
+
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                Tables\Columns\ImageColumn::make('thumbnail_path')
+                    ->label('Thumbnail')
+                    ->circular(),
+
+                Tables\Columns\TextColumn::make('title')
+                    ->searchable()
+                    ->sortable()
+                    ->weight('bold'),
+
+                Tables\Columns\TextColumn::make('instructor.name')
+                    ->sortable()
+                    ->searchable(),
+
+                Tables\Columns\BadgeColumn::make('difficulty')
+                    ->colors([
+                        'success' => 'beginner',
+                        'warning' => 'intermediate',
+                        'danger' => 'advanced',
+                    ]),
+
+                Tables\Columns\BadgeColumn::make('status')
+                    ->colors([
+                        'warning' => 'draft',
+                        'success' => 'published',
+                        'danger' => 'archived',
+                    ]),
+
+                Tables\Columns\TextColumn::make('student_count')
+                    ->label('Students')
+                    ->badge()
+                    ->color('primary'),
+
+                Tables\Columns\TextColumn::make('lesson_count')
+                    ->label('Lessons')
+                    ->badge(),
+
+                Tables\Columns\TextColumn::make('completion_rate')
+                    ->label('Completion')
+                    ->suffix('%')
+                    ->color(fn ($state) => $state >= 70 ? 'success' : ($state >= 40 ? 'warning' : 'danger')),
+
+                Tables\Columns\TextColumn::make('duration_minutes')
+                    ->label('Duration')
+                    ->formatStateUsing(fn ($state) =>
+                        $state >= 60
+                            ? floor($state / 60) . 'h ' . ($state % 60) . 'm'
+                            : $state . 'm'
+                    ),
+            ])
+            ->filters([
+                Tables\Filters\SelectFilter::make('status')
+                    ->options([
+                        'draft' => 'Draft',
+                        'published' => 'Published',
+                        'archived' => 'Archived',
+                    ]),
+
+                Tables\Filters\SelectFilter::make('difficulty')
+                    ->options([
+                        'beginner' => 'Beginner',
+                        'intermediate' => 'Intermediate',
+                        'advanced' => 'Advanced',
+                    ]),
+
+                Tables\Filters\Filter::make('featured')
+                    ->query(fn (Builder $query) => $query->where('is_featured', true))
+                    ->label('Featured only'),
+            ])
+            ->actions([
+                Tables\Actions\ViewAction::make(),
+                Tables\Actions\EditAction::make(),
+
+                Tables\Actions\Action::make('enroll_students')
+                    ->icon('heroicon-o-user-plus')
+                    ->color('success')
+                    ->form([
+                        Forms\Components\Select::make('user_ids')
+                            ->label('Students')
+                            ->multiple()
+                            ->relationship('team.users', 'name')
+                            ->required(),
+                    ])
+                    ->action(function (Course $record, array $data) {
+                        foreach ($data['user_ids'] as $userId) {
+                            $user = User::find($userId);
+                            if (!$record->isUserEnrolled($user)) {
+                                $record->enrollUser($user);
+                            }
+                        }
+                    }),
+            ])
+            ->defaultSort('created_at', 'desc');
+    }
+}
+```
+
+### Student Dashboard Widget
+
+```php
+<?php
+
+namespace App\Filament\App\Widgets;
+
+use App\Models\Enrollment;
+use Filament\Facades\Filament;
+use Filament\Widgets\StatsOverviewWidget as BaseWidget;
+use Filament\Widgets\StatsOverviewWidget\Stat;
+
+class StudentDashboardWidget extends BaseWidget
+{
+    protected function getStats(): array
+    {
+        $user = auth()->user();
+        $teamId = Filament::getTenant()->id;
+
+        $activeEnrollments = Enrollment::where('user_id', $user->id)
+            ->where('team_id', $teamId)
+            ->where('status', 'active')
+            ->count();
+
+        $completedCourses = Enrollment::where('user_id', $user->id)
+            ->where('team_id', $teamId)
+            ->where('status', 'completed')
+            ->count();
+
+        $certificates = Certificate::where('user_id', $user->id)
+            ->where('team_id', $teamId)
+            ->count();
+
+        $avgProgress = Enrollment::where('user_id', $user->id)
+            ->where('team_id', $teamId)
+            ->where('status', 'active')
+            ->avg('progress_percentage') ?? 0;
+
+        return [
+            Stat::make('Active Courses', $activeEnrollments)
+                ->description('Currently enrolled')
+                ->descriptionIcon('heroicon-o-academic-cap')
+                ->color('primary'),
+
+            Stat::make('Completed', $completedCourses)
+                ->description('Courses finished')
+                ->descriptionIcon('heroicon-o-check-circle')
+                ->color('success'),
+
+            Stat::make('Certificates', $certificates)
+                ->description('Earned certificates')
+                ->descriptionIcon('heroicon-o-trophy')
+                ->color('warning'),
+
+            Stat::make('Average Progress', round($avgProgress) . '%')
+                ->description('Across active courses')
+                ->descriptionIcon('heroicon-o-chart-bar')
+                ->color('info'),
+        ];
+    }
+}
+```
+
+## Why This Example is Better
+
+### Complete Learning System
+- ✅ Full course management (courses, lessons, quizzes)
+- ✅ Student enrollment with progress tracking
+- ✅ Automated certificate generation
+- ✅ Quiz system with multiple attempts
+- ✅ Instructor role management
+- ✅ Time tracking per lesson
+
+### Production-Ready Features
+- ✅ Soft deletes on courses
+- ✅ Automatic progress calculation
+- ✅ Passing score requirements
+- ✅ Certificate expiration support
+- ✅ Course difficulty levels
+- ✅ Featured courses
+
+### Business Logic
+- ✅ Completion rate calculations
+- ✅ Average score tracking
+- ✅ Final score from best quiz attempts
+- ✅ Automatic certificate issuance
+- ✅ Enrollment expiration
+- ✅ Time spent formatting
+
+### Analytics & Reporting
+- ✅ Student count per course
+- ✅ Completion rates
+- ✅ Average scores
+- ✅ Progress percentages
+- ✅ Time tracking
+- ✅ Dashboard widgets
+
+## Next Steps
+
+- [Agency Client Portal](/multi-tenancy/examples/project-management) - Client management system
+- [CRM System](/multi-tenancy/examples/crm-system) - Customer relationship management
+- [SaaS Platform](/multi-tenancy/examples/saas-platform) - Subscription platform with usage tracking

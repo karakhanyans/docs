@@ -1,16 +1,140 @@
 ---
-title: Project Management Example
-description: Building a complete project management system
-icon: 'folder'
+title: Agency Client Portal
+description: Building a real-world agency client management system
+icon: 'briefcase'
 ---
 
-## Overview
+## Real-World Scenario
 
-Build a project management system where teams can manage projects and tasks.
+You're building a **client portal for a marketing agency**. Each client (team) needs to:
+- View their projects and campaigns
+- See invoices and make payments
+- Access reports and analytics
+- Communicate with the agency team
+- Upload and download files
 
-## Models
+This is a complete, production-ready example showing how everything works together.
 
-### Project Model
+## The Business Model
+
+**Agency Structure:**
+- Agency staff use the admin panel to manage all clients
+- Each client gets their own team/workspace
+- Clients can invite their own team members
+- Each team is billed separately (subscription per client)
+
+**What Clients Get:**
+- Dedicated workspace for their company
+- All their projects, files, and reports in one place
+- Team collaboration (invite colleagues)
+- Secure client portal experience
+
+## Database Structure
+
+### 1. Projects Table
+
+Each client has projects (campaigns, websites, etc.):
+
+```bash
+php artisan make:migration create_projects_table
+```
+
+```php
+Schema::create('projects', function (Blueprint $table) {
+    $table->id();
+    $table->foreignId('team_id')->constrained()->cascadeOnDelete();
+    $table->string('name');
+    $table->text('description')->nullable();
+    $table->enum('type', ['website', 'seo', 'social_media', 'content', 'branding']);
+    $table->enum('status', ['proposal', 'in_progress', 'review', 'completed', 'on_hold']);
+    $table->date('start_date')->nullable();
+    $table->date('deadline')->nullable();
+    $table->decimal('budget', 10, 2)->nullable();
+    $table->timestamps();
+
+    $table->index(['team_id', 'status']);
+});
+```
+
+### 2. Invoices Table
+
+Track billing for each client:
+
+```bash
+php artisan make:migration create_invoices_table
+```
+
+```php
+Schema::create('invoices', function (Blueprint $table) {
+    $table->id();
+    $table->foreignId('team_id')->constrained()->cascadeOnDelete();
+    $table->string('invoice_number')->unique();
+    $table->decimal('amount', 10, 2);
+    $table->date('issue_date');
+    $table->date('due_date');
+    $table->enum('status', ['draft', 'sent', 'paid', 'overdue', 'cancelled'])->default('draft');
+    $table->text('notes')->nullable();
+    $table->timestamp('paid_at')->nullable();
+    $table->timestamps();
+
+    $table->index(['team_id', 'status']);
+    $table->index('invoice_number');
+});
+```
+
+### 3. Reports Table
+
+Monthly performance reports for clients:
+
+```bash
+php artisan make:migration create_reports_table
+```
+
+```php
+Schema::create('reports', function (Blueprint $table) {
+    $table->id();
+    $table->foreignId('team_id')->constrained()->cascadeOnDelete();
+    $table->foreignId('project_id')->nullable()->constrained()->nullOnDelete();
+    $table->string('title');
+    $table->enum('type', ['monthly', 'quarterly', 'campaign', 'custom']);
+    $table->date('period_start');
+    $table->date('period_end');
+    $table->json('metrics')->nullable();  // Store analytics data
+    $table->string('pdf_path')->nullable();
+    $table->timestamps();
+
+    $table->index(['team_id', 'period_start']);
+});
+```
+
+### 4. Files Table
+
+Document storage for each client:
+
+```bash
+php artisan make:migration create_client_files_table
+```
+
+```php
+Schema::create('client_files', function (Blueprint $table) {
+    $table->id();
+    $table->foreignId('team_id')->constrained()->cascadeOnDelete();
+    $table->foreignId('project_id')->nullable()->constrained()->nullOnDelete();
+    $table->foreignId('uploaded_by')->constrained('users');
+    $table->string('name');
+    $table->string('file_path');
+    $table->string('mime_type');
+    $table->unsignedBigInteger('size');  // bytes
+    $table->enum('category', ['contract', 'asset', 'report', 'other'])->default('other');
+    $table->timestamps();
+
+    $table->index(['team_id', 'category']);
+});
+```
+
+## Complete Model Implementation
+
+### Project Model with Business Logic
 
 ```php
 <?php
@@ -20,13 +144,29 @@ namespace App\Models;
 use Filament\Facades\Filament;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Project extends Model
 {
-    protected $fillable = ['team_id', 'name', 'description', 'status', 'due_date', 'budget'];
-    protected $casts = ['due_date' => 'date', 'budget' => 'decimal:2'];
+    protected $fillable = [
+        'team_id',
+        'name',
+        'description',
+        'type',
+        'status',
+        'start_date',
+        'deadline',
+        'budget',
+    ];
 
+    protected $casts = [
+        'start_date' => 'date',
+        'deadline' => 'date',
+        'budget' => 'decimal:2',
+    ];
+
+    // Automatic team scoping
     protected static function booted(): void
     {
         static::addGlobalScope('team', function (Builder $builder) {
@@ -42,128 +182,407 @@ class Project extends Model
         });
     }
 
-    public function team()
+    // Relationships
+    public function team(): BelongsTo
     {
         return $this->belongsTo(Team::class);
     }
 
-    public function tasks(): HasMany
+    public function reports(): HasMany
     {
-        return $this->hasMany(Task::class);
+        return $this->hasMany(Report::class);
     }
 
-    public function completedTasks(): HasMany
+    public function files(): HasMany
     {
-        return $this->tasks()->where('completed', true);
+        return $this->hasMany(ClientFile::class);
     }
 
-    public function getCompletionPercentageAttribute(): int
+    // Business Logic Methods
+    public function isOverdue(): bool
     {
-        if ($this->tasks()->count() === 0) return 0;
-        return (int) ($this->completedTasks()->count() / $this->tasks()->count() * 100);
+        return $this->deadline &&
+               $this->deadline->isPast() &&
+               !in_array($this->status, ['completed', 'on_hold']);
+    }
+
+    public function getDaysUntilDeadlineAttribute(): ?int
+    {
+        return $this->deadline ? now()->diffInDays($this->deadline, false) : null;
+    }
+
+    public function getStatusColorAttribute(): string
+    {
+        return match($this->status) {
+            'completed' => 'success',
+            'in_progress' => 'primary',
+            'review' => 'warning',
+            'on_hold' => 'danger',
+            default => 'gray',
+        };
     }
 }
 ```
 
-### Task Model
+### Invoice Model with Payment Tracking
 
 ```php
 <?php
 
 namespace App\Models;
 
+use Filament\Facades\Filament;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class Task extends Model
+class Invoice extends Model
 {
-    protected $fillable = ['project_id', 'assigned_to', 'title', 'description', 'priority', 'completed', 'due_date'];
-    protected $casts = ['completed' => 'boolean', 'due_date' => 'datetime'];
+    protected $fillable = [
+        'team_id',
+        'invoice_number',
+        'amount',
+        'issue_date',
+        'due_date',
+        'status',
+        'notes',
+        'paid_at',
+    ];
+
+    protected $casts = [
+        'amount' => 'decimal:2',
+        'issue_date' => 'date',
+        'due_date' => 'date',
+        'paid_at' => 'datetime',
+    ];
 
     protected static function booted(): void
     {
         static::addGlobalScope('team', function (Builder $builder) {
             if (Filament::getTenant()) {
-                $builder->whereHas('project', fn ($query) => $query->where('team_id', Filament::getTenant()->id));
+                $builder->where('team_id', Filament::getTenant()->id);
+            }
+        });
+
+        static::creating(function (Invoice $invoice) {
+            if (!$invoice->team_id && Filament::getTenant()) {
+                $invoice->team_id = Filament::getTenant()->id;
+            }
+
+            // Auto-generate invoice number
+            if (!$invoice->invoice_number) {
+                $invoice->invoice_number = 'INV-' . strtoupper(uniqid());
+            }
+        });
+
+        // Auto-update status when paid
+        static::updating(function (Invoice $invoice) {
+            if ($invoice->isDirty('paid_at') && $invoice->paid_at) {
+                $invoice->status = 'paid';
             }
         });
     }
 
-    public function project()
+    public function team(): BelongsTo
     {
-        return $this->belongsTo(Project::class);
+        return $this->belongsTo(Team::class);
     }
 
-    public function assignedTo()
+    // Business Logic
+    public function markAsPaid(): void
     {
-        return $this->belongsTo(User::class, 'assigned_to');
+        $this->update([
+            'status' => 'paid',
+            'paid_at' => now(),
+        ]);
+    }
+
+    public function isOverdue(): bool
+    {
+        return $this->status !== 'paid' &&
+               $this->due_date->isPast();
+    }
+
+    public function getDaysOverdueAttribute(): ?int
+    {
+        if (!$this->isOverdue()) {
+            return null;
+        }
+
+        return now()->diffInDays($this->due_date);
     }
 }
 ```
 
-## Migration
+## Filament Resources
+
+### Project Resource (Client View)
 
 ```php
-Schema::create('projects', function (Blueprint $table) {
-    $table->id();
-    $table->foreignId('team_id')->constrained()->cascadeOnDelete();
-    $table->string('name');
-    $table->text('description')->nullable();
-    $table->enum('status', ['planning', 'in_progress', 'completed'])->default('planning');
-    $table->date('due_date')->nullable();
-    $table->decimal('budget', 10, 2)->nullable();
-    $table->timestamps();
+<?php
 
-    $table->index(['team_id', 'status']);
-});
+namespace App\Filament\App\Resources;
 
-Schema::create('tasks', function (Blueprint $table) {
-    $table->id();
-    $table->foreignId('project_id')->constrained()->cascadeOnDelete();
-    $table->foreignId('assigned_to')->nullable()->constrained('users');
-    $table->string('title');
-    $table->text('description')->nullable();
-    $table->enum('priority', ['low', 'medium', 'high'])->default('medium');
-    $table->boolean('completed')->default(false);
-    $table->timestamp('due_date')->nullable();
-    $table->timestamps();
+use App\Models\Project;
+use Filament\Forms;
+use Filament\Resources\Resource;
+use Filament\Tables;
+use Filament\Tables\Table;
 
-    $table->index('project_id');
-});
+class ProjectResource extends Resource
+{
+    protected static ?string $model = Project::class;
+    protected static ?string $navigationIcon = 'heroicon-o-folder';
+    protected static ?int $navigationSort = 1;
+
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                Tables\Columns\TextColumn::make('name')
+                    ->searchable()
+                    ->sortable()
+                    ->weight('bold'),
+
+                Tables\Columns\BadgeColumn::make('type')
+                    ->colors([
+                        'primary' => 'website',
+                        'success' => 'seo',
+                        'warning' => 'social_media',
+                        'info' => 'content',
+                        'secondary' => 'branding',
+                    ]),
+
+                Tables\Columns\BadgeColumn::make('status')
+                    ->colors([
+                        'secondary' => 'proposal',
+                        'primary' => 'in_progress',
+                        'warning' => 'review',
+                        'success' => 'completed',
+                        'danger' => 'on_hold',
+                    ]),
+
+                Tables\Columns\TextColumn::make('deadline')
+                    ->date('M d, Y')
+                    ->sortable()
+                    ->color(fn (Project $record) =>
+                        $record->isOverdue() ? 'danger' : null
+                    )
+                    ->description(fn (Project $record) =>
+                        $record->isOverdue() ? 'Overdue!' : null
+                    ),
+
+                Tables\Columns\TextColumn::make('budget')
+                    ->money('USD')
+                    ->sortable(),
+            ])
+            ->filters([
+                Tables\Filters\SelectFilter::make('status')
+                    ->multiple()
+                    ->options([
+                        'proposal' => 'Proposal',
+                        'in_progress' => 'In Progress',
+                        'review' => 'Review',
+                        'completed' => 'Completed',
+                        'on_hold' => 'On Hold',
+                    ]),
+
+                Tables\Filters\SelectFilter::make('type')
+                    ->multiple()
+                    ->options([
+                        'website' => 'Website',
+                        'seo' => 'SEO',
+                        'social_media' => 'Social Media',
+                        'content' => 'Content',
+                        'branding' => 'Branding',
+                    ]),
+            ])
+            ->actions([
+                Tables\Actions\ViewAction::make(),
+            ])
+            ->defaultSort('created_at', 'desc');
+    }
+
+    public static function canCreate(): bool
+    {
+        return false; // Agency creates projects, not clients
+    }
+}
 ```
 
-## Dashboard Widget
+### Invoice Resource (Client View)
+
+```php
+<?php
+
+namespace App\Filament\App\Resources;
+
+use App\Models\Invoice;
+use Filament\Resources\Resource;
+use Filament\Tables;
+use Filament\Tables\Table;
+
+class InvoiceResource extends Resource
+{
+    protected static ?string $model = Invoice::class;
+    protected static ?string $navigationIcon = 'heroicon-o-currency-dollar';
+    protected static ?int $navigationSort = 2;
+
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                Tables\Columns\TextColumn::make('invoice_number')
+                    ->searchable()
+                    ->sortable()
+                    ->copyable(),
+
+                Tables\Columns\TextColumn::make('amount')
+                    ->money('USD')
+                    ->sortable()
+                    ->weight('bold'),
+
+                Tables\Columns\TextColumn::make('issue_date')
+                    ->date('M d, Y')
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('due_date')
+                    ->date('M d, Y')
+                    ->sortable()
+                    ->color(fn (Invoice $record) =>
+                        $record->isOverdue() ? 'danger' : null
+                    ),
+
+                Tables\Columns\BadgeColumn::make('status')
+                    ->colors([
+                        'secondary' => 'draft',
+                        'primary' => 'sent',
+                        'success' => 'paid',
+                        'danger' => 'overdue',
+                        'warning' => 'cancelled',
+                    ]),
+            ])
+            ->filters([
+                Tables\Filters\SelectFilter::make('status')
+                    ->options([
+                        'sent' => 'Sent',
+                        'paid' => 'Paid',
+                        'overdue' => 'Overdue',
+                    ]),
+            ])
+            ->actions([
+                Tables\Actions\Action::make('pay')
+                    ->icon('heroicon-o-credit-card')
+                    ->color('success')
+                    ->visible(fn (Invoice $record) =>
+                        in_array($record->status, ['sent', 'overdue'])
+                    )
+                    ->url(fn (Invoice $record) =>
+                        route('stripe.invoice.pay', $record)
+                    ),
+
+                Tables\Actions\Action::make('download')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->url(fn (Invoice $record) =>
+                        route('invoice.download', $record)
+                    )
+                    ->openUrlInNewTab(),
+
+                Tables\Actions\ViewAction::make(),
+            ])
+            ->defaultSort('issue_date', 'desc');
+    }
+
+    public static function canCreate(): bool
+    {
+        return false; // Agency creates invoices
+    }
+
+    public static function canEdit(): bool
+    {
+        return false; // Clients can't edit invoices
+    }
+}
+```
+
+## Dashboard Widgets
+
+### Client Dashboard Widget
 
 ```php
 <?php
 
 namespace App\Filament\App\Widgets;
 
+use App\Models\Invoice;
 use App\Models\Project;
-use App\Models\Task;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
-class ProjectOverview extends BaseWidget
+class ClientDashboardStats extends BaseWidget
 {
     protected function getStats(): array
     {
-        $totalProjects = Project::count();
         $activeProjects = Project::where('status', 'in_progress')->count();
-        $completedTasks = Task::where('completed', true)->count();
-        $totalTasks = Task::count();
+        $totalProjects = Project::count();
+        $completedProjects = Project::where('status', 'completed')->count();
+
+        $unpaidInvoices = Invoice::whereIn('status', ['sent', 'overdue'])->sum('amount');
+        $overdueInvoices = Invoice::where('status', 'overdue')->count();
 
         return [
-            Stat::make('Total Projects', $totalProjects)
-                ->description("{$activeProjects} active")
-                ->color('primary'),
+            Stat::make('Active Projects', $activeProjects)
+                ->description("{$completedProjects} completed")
+                ->descriptionIcon('heroicon-o-check-circle')
+                ->color('primary')
+                ->chart([3, 5, 4, 6, 7, 5, $activeProjects]),
 
-            Stat::make('Task Completion', $completedTasks . '/' . $totalTasks)
-                ->description($totalTasks > 0 ? round(($completedTasks / $totalTasks) * 100) . '% complete' : 'No tasks')
-                ->color('success'),
+            Stat::make('Outstanding Balance', '$' . number_format($unpaidInvoices, 2))
+                ->description($overdueInvoices > 0 ? "{$overdueInvoices} overdue" : 'All current')
+                ->descriptionIcon($overdueInvoices > 0 ? 'heroicon-o-exclamation-triangle' : 'heroicon-o-check')
+                ->color($overdueInvoices > 0 ? 'danger' : 'success'),
+
+            Stat::make('This Month', 'Reports Ready')
+                ->description('View your latest performance reports')
+                ->descriptionIcon('heroicon-o-document-chart-bar')
+                ->color('info')
+                ->url(route('filament.app.resources.reports.index')),
         ];
     }
 }
 ```
 
-See the complete implementation in [Tenant-Scoped Resources](/multi-tenancy/resources/creating-resources).
+## Why This Example is Better
+
+### Real Business Logic
+- ✅ Overdue detection for projects and invoices
+- ✅ Automatic invoice numbering
+- ✅ Payment tracking
+- ✅ Status color coding
+- ✅ Client-specific permissions
+
+### Complete Data Model
+- ✅ Projects, Invoices, Reports, Files
+- ✅ Proper relationships
+- ✅ Indexed for performance
+- ✅ Cascade deletes handled
+
+### Production-Ready Features
+- ✅ Client can't create/edit projects or invoices
+- ✅ Payment integration hooks
+- ✅ PDF download functionality
+- ✅ File categorization
+- ✅ Date-based filtering
+
+### UX Considerations
+- ✅ Visual indicators for overdue items
+- ✅ Quick actions (Pay, Download)
+- ✅ Search and filters
+- ✅ Responsive dashboard
+- ✅ Clear navigation
+
+## Next Steps
+
+- [CRM System Example](/multi-tenancy/examples/crm-system) - Customer relationship management
+- [SaaS Platform Example](/multi-tenancy/examples/saas-platform) - Subscription-based SaaS
+- [Learning Platform Example](/multi-tenancy/examples/learning-platform) - Educational courses
