@@ -1,0 +1,88 @@
+---
+title: Database Overview
+description: Understanding the multi-tenancy database architecture
+icon: 'database'
+---
+
+## Overview
+
+Larafast Multi-Tenancy uses a **shared database** approach with logical data isolation. All tenants (teams) share the same database, and data is separated using team associations in your models and queries.
+
+## Architecture Benefits
+
+This approach provides:
+
+### Cost Efficiency
+- Single database infrastructure for all tenants
+- No need to manage multiple database connections
+- Reduced hosting and maintenance costs
+
+### Easier Maintenance
+- One schema to manage and update
+- Simplified migrations and deployments
+- Single backup strategy
+
+### Better Resource Utilization
+- Shared connection pooling
+- More efficient use of database resources
+- Better query caching opportunities
+
+### Simplified Operations
+- One database to monitor and optimize
+- Easier to scale vertically
+- Simplified disaster recovery
+
+## Database Schema
+
+The multi-tenancy system uses three core tables:
+
+### Core Tables
+
+1. **`teams`** - The tenant model (each team is a tenant)
+2. **`team_user`** - Pivot table managing team memberships
+3. **`team_invitations`** - Email-based team invitations
+4. **`users`** - Modified to include `current_team_id`
+
+## How Data Isolation Works
+
+### Logical Separation
+Data is isolated using `team_id` foreign keys on all tenant-scoped tables:
+
+```php
+// All queries automatically filtered by team_id
+$projects = Project::all(); // Only current team's projects
+```
+
+### Global Scopes
+Models use Eloquent global scopes to automatically filter queries:
+
+```php
+protected static function booted(): void
+{
+    static::addGlobalScope('team', function (Builder $builder) {
+        if (Filament::getTenant()) {
+            $builder->where('team_id', Filament::getTenant()->id);
+        }
+    });
+}
+```
+
+### Automatic Assignment
+When creating records, `team_id` is automatically set:
+
+```php
+static::creating(function (Project $project) {
+    if (!$project->team_id && Filament::getTenant()) {
+        $project->team_id = Filament::getTenant()->id;
+    }
+});
+```
+
+## Next Steps
+
+Learn about the specific database tables and their schemas:
+
+- [Teams Table](/multi-tenancy/database/teams-table) - The core tenant table
+- [Team User Table](/multi-tenancy/database/team-user-table) - Managing memberships
+- [Team Invitations Table](/multi-tenancy/database/invitations-table) - Invitation system
+- [Creating Tenant-Scoped Tables](/multi-tenancy/database/tenant-scoped-tables) - Add your own tables

@@ -1,0 +1,160 @@
+---
+title: Accepting Invitations
+description: How recipients join your team
+icon: 'check'
+---
+
+## Overview
+
+When someone receives a team invitation, accepting it is quick and simple. The system **automatically handles everything** - from account creation to adding them to the team with the correct permissions.
+
+## The Invitation Link
+
+Recipients receive an email with a unique invitation link that looks like:
+```
+https://yourapp.com/invitations/accept/abc123...
+```
+
+This link:
+- ✅ Is **unique and secure** - 64-character random token
+- ✅ **Expires after 7 days** - For security
+- ✅ Can only be used **once** - Prevents duplicate acceptances
+- ✅ Works on **any device** - Desktop, mobile, tablet
+
+## Acceptance Flow
+
+### For Existing Users
+
+If the recipient already has an account with your app:
+
+1. **Click invitation link** - Opens in their browser
+2. **Log in** (if not already) - Uses their existing credentials
+3. **Email verification** - System checks their email matches the invitation
+4. **Automatic join** - Added to the team immediately
+5. **Redirected to team** - Taken to the new team's dashboard
+
+**Total time: ~10 seconds** ⚡
+
+### For New Users
+
+If the recipient doesn't have an account yet:
+
+1. **Click invitation link** - Opens in their browser
+2. **Redirected to registration** - Shown the sign-up page
+3. **Create account** - Email is pre-filled from the invitation
+4. **Email verification** - May need to verify their email
+5. **Automatic join** - Added to the team immediately
+6. **Welcome to the team** - Taken to the team dashboard
+
+**Total time: ~2 minutes** ⚡
+
+## What Happens Automatically
+
+When someone accepts an invitation, the system automatically:
+
+1. ✅ **Adds them as a team member** - No manual approval needed
+2. ✅ **Assigns their role** - The role you selected when inviting
+3. ✅ **Sets as current team** - This team becomes their active workspace
+4. ✅ **Marks invitation as accepted** - Can't be used again
+5. ✅ **Sends them to the dashboard** - Ready to start working
+6. ✅ **Logs the activity** - For audit purposes
+
+**No manual steps required!**
+
+## Validation and Security
+
+The system automatically validates several things:
+
+### Email Matching
+- The person accepting **must use the email address** the invitation was sent to
+- If emails don't match, they see: "This invitation is for a different email address"
+- Prevents invitation theft or sharing
+
+### Expiration Check
+- Invitations expire after 7 days
+- Expired invitations show: "This invitation has expired"
+- Contact the team owner to request a new invitation
+
+### Single Use
+- Each invitation can only be accepted once
+- Already-accepted invitations show: "This invitation has already been used"
+
+### Already a Member
+- If someone is already a team member, the system handles it gracefully
+- No duplicate memberships created
+
+## Common Scenarios
+
+### "I didn't receive the invitation email"
+
+1. **Check spam folder** - Invitation emails sometimes go to spam
+2. **Check the email address** - Make sure invitation was sent to the right address
+3. **Ask for resend** - Team owner can resend the invitation
+4. **Check email configuration** - On the sender's side
+
+### "The invitation expired"
+
+1. **Contact team owner** - Ask them to send a new invitation
+2. **They can resend** - From the pending invitations list
+3. **New link sent** - Fresh 7-day expiration
+
+### "I have multiple email addresses"
+
+You must accept the invitation using the **exact email address** it was sent to. If you want to use a different email:
+1. Either accept with the invited email
+2. Or ask the team owner to send a new invitation to your preferred email
+
+### "I'm already logged in to a different account"
+
+1. **Log out** of your current account
+2. **Log in** with the account matching the invitation email
+3. **Click the invitation link again**
+
+## After Acceptance
+
+Once someone accepts and joins your team:
+
+1. **They appear in your team members list** - Immediately visible
+2. **Invitation status changes** - Shows as "Accepted"
+3. **They can access team resources** - Based on their assigned role
+4. **They see the team switcher** - Can switch between teams if they're in multiple
+
+## Technical Details
+
+The invitation acceptance is handled by:
+- **URL**: `/invitations/accept/{token}`
+- **Controller**: `app/Http/Controllers/InvitationController.php`
+- **Route**: Defined in `routes/web.php`
+
+The system uses **database transactions** to ensure all operations (adding member, assigning role, marking accepted) happen together or not at all - preventing partial states.
+
+## Customization
+
+### Changing the Redirect
+
+After acceptance, users are redirected to the team dashboard. To change where they go:
+
+**Location:** `app/Http/Controllers/InvitationController.php`
+
+Modify the `redirect()` call in the `acceptInvitation` method.
+
+### Adding Welcome Messages
+
+To show a custom welcome message after acceptance:
+
+**Location:** Same controller
+
+Modify the `with('success', ...)` message or add a notification.
+
+### Requiring Additional Steps
+
+If you want users to complete additional steps after accepting (e.g., profile setup, terms acceptance):
+
+**Location:** Same controller
+
+Add a check and redirect to your onboarding flow before taking them to the dashboard.
+
+## Next Steps
+
+- [Managing Members](/multi-tenancy/teams/managing-members) - What happens after they join
+- [Team Settings](/multi-tenancy/teams/team-settings) - Configure your team

@@ -1,0 +1,123 @@
+---
+title: Managing Members
+description: How team member management works
+icon: 'users'
+---
+
+## Overview
+
+Larafast Multi-Tenancy includes a **built-in team member management interface**. Team owners can view all members, invite new ones, and manage existing memberships - all through the pre-built UI.
+
+## Viewing Team Members
+
+The team members interface is already available in your application:
+
+- **Navigation**: Click "Users" or "Team Members" in the sidebar
+- **Location**: `app/Filament/App/Resources/UserResource.php`
+- **Access**: All team members can view the list
+
+### What You'll See
+
+The team members table displays:
+- **Name** - Member's full name
+- **Email** - Email address (with copy button)
+- **Owner Badge** - Shows who owns the team
+- **Join Date** - When the member joined
+- **Actions** - Remove member button (for owners only)
+
+The list automatically shows only members of your current team. When you switch teams, the member list updates automatically.
+
+## Adding New Members
+
+To add someone to your team, you use the **invitation system** (already built-in):
+
+1. **Click "Invite Member"** button at the top of the members page
+2. **Enter their email** and select their role
+3. **Send invitation** - They receive an email with an invitation link
+4. **They accept** - Once they click the link and accept, they're automatically added to your team
+
+See [Sending Invitations](/multi-tenancy/invitations/sending-invitations) for details on how the invitation system works.
+
+## Removing Members
+
+Team owners can remove members from the team:
+
+1. **Find the member** in the team members list
+2. **Click the trash icon** next to their name
+3. **Confirm removal** in the dialog
+4. **Member removed** - They lose access to the team immediately
+
+**Important Notes:**
+- ✅ Only team owners can remove members
+- ❌ You cannot remove the team owner
+- ✅ Removed members can be re-invited if needed
+- ✅ Removing a member doesn't delete their user account
+
+## Team Ownership
+
+### Who is the Owner?
+
+The team owner is the user who created the team. Owners have special privileges:
+- Can invite and remove members
+- Can edit team settings
+- Can delete the team
+- Cannot be removed from the team
+
+In the members list, the owner is clearly marked with an "Owner" badge.
+
+### Transferring Ownership
+
+If you need to transfer team ownership to another member, this can be done through the admin panel or by customizing the team settings page.
+
+**Location:** Admin Panel → Teams → Select Team → Change Owner
+
+## Member Roles
+
+When inviting members, you can assign roles that determine their permissions:
+- **Admin** - Full access to manage the team
+- **Editor** - Can create and edit content
+- **Viewer** - Read-only access
+
+Roles are managed through Laravel's Spatie Permission package, which is already integrated into the application.
+
+## Team Switcher
+
+Members who belong to multiple teams can easily switch between them:
+
+1. **Click the team name** in the top navigation bar
+2. **Select a different team** from the dropdown
+3. **Automatic switch** - The interface updates to show the new team's data
+
+This feature is built-in and requires no configuration.
+
+## Viewing Member Activity
+
+The system tracks when members join teams and can log member activities using the built-in activity log feature.
+
+To see team activities:
+- **Location**: Admin Panel → Activity Logs
+- **Filter**: By team or user
+- **Shows**: Invitations sent, members added/removed, team changes
+
+## Customization
+
+### Customizing the Members Table
+
+If you want to show additional information about members (e.g., their role, last login), you can customize the UserResource:
+
+**Location:** `app/Filament/App/Resources/UserResource.php`
+
+The table uses Filament's table builder, so you can add columns, filters, and actions easily.
+
+### Adding Member Permissions
+
+To control what members can do based on their role, you can use policies and gates:
+
+**Location:** `app/Policies/TeamPolicy.php`
+
+The policy system is already set up with Laravel's authorization features.
+
+## Next Steps
+
+- [Sending Invitations](/multi-tenancy/invitations/sending-invitations) - Learn how to invite new members
+- [Team Settings](/multi-tenancy/teams/team-settings) - Configure your team

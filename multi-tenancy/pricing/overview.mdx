@@ -1,0 +1,196 @@
+---
+title: Pricing & Subscriptions Overview
+description: How team-based pricing and subscriptions work
+icon: 'credit-card'
+---
+
+## Overview
+
+Larafast Multi-Tenancy comes with **team-based subscription billing** built right in. Each team can have its own subscription, allowing you to charge per team/organization rather than per user - the standard SaaS pricing model.
+
+## How Team Subscriptions Work
+
+### Team-Level Billing
+
+Unlike user-based billing where each individual pays, **team subscriptions** mean:
+
+- ✅ **One subscription per team** - The team pays, not individual members
+- ✅ **Unlimited team members** - Add as many users as you want (or set your own limits)
+- ✅ **Team owner pays** - The person who created the team manages the subscription
+- ✅ **Automatic access control** - Only subscribed teams can access premium features
+
+### Pricing Model
+
+**Example:** A project management SaaS
+- **Free Plan**: 3 projects, 5 team members
+- **Starter Plan**: $29/month - 50 projects, unlimited members
+- **Pro Plan**: $99/month - Unlimited projects, priority support
+
+**How it works:**
+- Acme Corp creates a team and subscribes to the Starter Plan
+- They pay $29/month total (not per user!)
+- They can add 10, 20, or 100 team members - same price
+- If they need more projects, they upgrade to Pro
+- Each team has its own independent subscription
+
+## Integrated Payment Providers
+
+Larafast Multi-Tenancy supports multiple payment providers out of the box:
+
+### Stripe (Recommended)
+- **Status**: Fully integrated with Laravel Cashier
+- **Best for**: Global SaaS businesses
+- **Features**: Subscriptions, one-time payments, invoices, tax calculation
+- **Configuration**: See [Stripe Setup](/multi-tenancy/pricing/stripe-setup)
+
+### LemonSqueezy
+- **Status**: Supported
+- **Best for**: Digital products, easier merchant of record
+- **Features**: Handles taxes automatically
+- **Configuration**: Available in codebase
+
+### Paddle
+- **Status**: Supported
+- **Best for**: European businesses, simpler compliance
+- **Features**: Merchant of record, handles VAT/taxes
+- **Configuration**: Available in codebase
+
+## Pricing Plans Configuration
+
+Your pricing plans are defined in a simple PHP configuration file:
+
+**Location:** `lang/en/prices.php`
+
+```php
+'stripe' => [
+    [
+        'name' => 'Free',
+        'slug' => 'free',
+        'description' => 'Perfect for small teams getting started',
+        'price' => 0,
+        'interval' => 'month',
+        'features' => [
+            'Up to 3 projects',
+            'Basic features',
+            '5 team members',
+            'Email support',
+        ],
+    ],
+    [
+        'name' => 'Starter',
+        'slug' => 'starter',  // Must match Stripe Price ID
+        'description' => 'For growing teams',
+        'price' => '29.99',
+        'interval' => 'month',
+        'features' => [
+            'Everything in Free',
+            'Unlimited projects',
+            'Unlimited team members',
+            'Advanced features',
+            'Priority support',
+        ],
+        'bestseller' => true,  // Shows "Most Popular" badge
+    ],
+    [
+        'name' => 'Pro',
+        'slug' => 'pro',  // Must match Stripe Price ID
+        'description' => 'For large organizations',
+        'price' => '99.99',
+        'interval' => 'month',
+        'features' => [
+            'Everything in Starter',
+            'Custom integrations',
+            'Dedicated account manager',
+            'SLA guarantee',
+            'Phone support',
+        ],
+    ],
+],
+```
+
+## Subscription Flow
+
+### 1. Team Creation
+User creates a team → Starts on Free plan (or trial)
+
+### 2. Upgrade Decision
+Team owner clicks "Upgrade" or accesses premium features
+
+### 3. Payment Page
+Redirected to Stripe checkout with team context
+
+### 4. Subscription Active
+Payment successful → Team immediately has premium access
+
+### 5. Team Members Benefit
+All team members automatically get premium features
+
+### 6. Renewal
+Stripe handles automatic billing monthly/yearly
+
+## Access Control
+
+The system automatically checks if teams have active subscriptions:
+
+```php
+// In your routes or middleware
+->middleware(['subscribed']) // Requires active subscription
+```
+
+**What happens:**
+- ✅ **Subscribed teams**: Full access
+- ❌ **No subscription**: Redirected to billing page
+- ⏰ **Trial expired**: Prompted to subscribe
+- 💳 **Payment failed**: Grace period, then restricted
+
+## Subscription Management
+
+Team owners can manage their subscription:
+
+### Billing Portal
+- **Access**: User menu → "Billing" or automatic redirect
+- **Actions**: Update payment method, view invoices, change plan, cancel
+
+### What Team Owners Can Do
+- View current plan and next billing date
+- Update credit card information
+- Upgrade or downgrade plans
+- View payment history and invoices
+- Cancel subscription (with confirmation)
+- Resume canceled subscription (before period ends)
+
+### What Happens on Cancellation
+- **Immediate**: No - access continues until period ends
+- **Grace period**: Team keeps access until billing cycle ends
+- **After expiration**: Team loses premium features, redirected to billing
+- **Data retention**: All team data is preserved
+
+## Admin Subscription Management
+
+Administrators can view and manage all subscriptions:
+
+**Location:** Admin Panel → Stripe Subscriptions
+
+- View all subscribed teams
+- See revenue metrics
+- Monitor failed payments
+- Manually cancel or modify subscriptions
+- View subscription analytics
+
+## Webhook Configuration
+
+Stripe sends webhooks for subscription events:
+- Subscription created/updated/canceled
+- Payment succeeded/failed
+- Invoice paid
+- Customer updated
+
+These are automatically handled by Laravel Cashier - no additional code needed!
+
+**Webhook URL:** `https://yourapp.com/stripe/webhook`
+
+## Next Steps
+
+- [Stripe Setup](/multi-tenancy/pricing/stripe-setup) - Configure Stripe for team subscriptions
+- [Plans Configuration](/multi-tenancy/pricing/plans-configuration) - Customize your pricing plans
+- [Subscription Features](/multi-tenancy/pricing/subscription-features) - Implement plan-based features

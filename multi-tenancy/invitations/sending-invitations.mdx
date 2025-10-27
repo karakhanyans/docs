@@ -1,0 +1,150 @@
+---
+title: Sending Invitations
+description: How the invitation system works
+icon: 'paper-plane'
+---
+
+## Overview
+
+Larafast Multi-Tenancy includes a **complete invitation system** that's ready to use out of the box. Team owners can invite new members via email, and the system handles everything automatically - from sending emails to adding members when they accept.
+
+## How to Invite Someone
+
+### From the Team Members Page
+
+1. **Navigate to Team Members** - Click "Users" or "Team Members" in the sidebar
+2. **Click "Invite Member"** - Button located at the top of the page
+3. **Fill in the form**:
+   - **Email** - The person's email address
+   - **Role** - Select their permission level (Admin, Editor, or Viewer)
+4. **Click "Send Invitation"** - The system sends the email immediately
+
+That's it! The invitation is created and the email is sent automatically.
+
+## What Happens When You Send an Invitation
+
+The system automatically:
+
+1. ✅ **Creates an invitation record** - Stored securely in the database
+2. ✅ **Generates a unique token** - 64-character secure token for the invitation link
+3. ✅ **Sets expiration date** - Invitation expires after 7 days
+4. ✅ **Sends email** - Queued job sends the invitation email
+5. ✅ **Tracks status** - Monitors if invitation is pending, accepted, or expired
+
+## The Invitation Email
+
+Recipients receive a professional email that includes:
+
+- **Team name** - Which team they're invited to join
+- **Sender's name** - Who invited them
+- **Role** - What permissions they'll have
+- **Accept button** - Clear call-to-action link
+- **Expiration date** - When the invitation expires
+
+**Email Template Location:** `resources/views/emails/team-invitation.blade.php`
+
+You can customize this template to match your brand or add additional information.
+
+## Invitation Expiration
+
+Invitations are valid for **7 days** by default. After that:
+- The invitation link no longer works
+- The invitation shows as "Expired" in your dashboard
+- You can resend a new invitation if needed
+
+### Why Invitations Expire
+
+Security best practice - expired tokens can't be used maliciously, and it encourages invitees to join promptly.
+
+## Managing Pending Invitations
+
+You can view and manage all your team's invitations:
+
+### Pending Invitations Widget
+
+If enabled, the dashboard shows a widget with:
+- **Email** - Who was invited
+- **Role** - What role they'll get
+- **Status** - Pending, Accepted, or Expired
+- **Expires** - When the invitation expires
+- **Actions** - Resend or delete
+
+### Resending an Invitation
+
+If someone didn't receive the email or it expired:
+
+1. **Find the invitation** in the pending invitations list
+2. **Click "Resend"** - Extends expiration by 7 days and sends a new email
+3. **Done** - They receive a fresh invitation
+
+### Canceling an Invitation
+
+To cancel an invitation before it's accepted:
+
+1. **Find the invitation** in the list
+2. **Click the delete/trash icon**
+3. **Confirm** - The invitation link becomes invalid
+
+## Invitation Validation
+
+The system automatically validates:
+- ✅ **Email format** - Must be a valid email address
+- ✅ **Duplicate check** - Can't invite someone who's already a member
+- ✅ **Pending check** - Can't send duplicate pending invitations
+- ✅ **Expiration** - Links don't work after expiration
+
+## Email Configuration
+
+For invitations to work, you need to configure email in your `.env` file:
+
+```bash
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.mailtrap.io  # Your SMTP host
+MAIL_PORT=2525
+MAIL_USERNAME=your_username
+MAIL_PASSWORD=your_password
+MAIL_FROM_ADDRESS=noreply@yourdomain.com
+MAIL_FROM_NAME="${APP_NAME}"
+```
+
+The system uses **queued emails**, so invitations are sent in the background without slowing down your application.
+
+## Customization
+
+### Changing Expiration Time
+
+To change how long invitations are valid:
+
+**Location:** `app/Filament/App/Resources/UserResource/Pages/ListUsers.php`
+
+Find the `expires_at` field and change `addDays(7)` to your preferred duration:
+```php
+'expires_at' => now()->addDays(14), // 14 days instead of 7
+```
+
+### Customizing Invitation Roles
+
+To add, remove, or rename roles:
+
+**Location:** Same file as above, in the invite form
+
+Modify the `role` select options:
+```php
+Forms\Components\Select::make('role')
+    ->options([
+        'owner' => 'Owner',        // Add new role
+        'admin' => 'Administrator', // Rename
+        'member' => 'Member',      // Add new role
+    ])
+```
+
+### Customizing the Email
+
+**Location:** `resources/views/emails/team-invitation.blade.php`
+
+This is a Laravel Markdown email template. You can modify the text, add your logo, change colors, or add additional information.
+
+## Next Steps
+
+- [Accepting Invitations](/multi-tenancy/invitations/accepting-invitations) - How recipients join the team
+- [Managing Members](/multi-tenancy/teams/managing-members) - Once they've joined

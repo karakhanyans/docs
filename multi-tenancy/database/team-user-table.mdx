@@ -1,0 +1,293 @@
+---
+title: Team User Table
+description: Managing team memberships
+icon: 'table'
+---
+
+## Overview
+
+The `team_user` table is a pivot table that manages the many-to-many relationship between teams and users. It tracks which users are members of which teams.
+
+## Schema
+
+```php
+Schema::create('team_user', function (Blueprint $table) {
+    $table->id();
+    $table->foreignId('team_id')->constrained()->cascadeOnDelete();
+    $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+    $table->timestamps();
+
+    $table->unique(['team_id', 'user_id']);
+});
+```
+
+## Columns
+
+### `id` (Primary Key)
+- **Type**: BIGINT UNSIGNED
+- **Description**: Unique identifier for the membership
+- **Auto-increment**: Yes
+
+### `team_id`
+- **Type**: BIGINT UNSIGNED
+- **Description**: Foreign key to teams table
+- **Required**: Yes
+- **Constraints**:
+  - Foreign key to `teams.id`
+  - Cascade on delete
+
+### `user_id`
+- **Type**: BIGINT UNSIGNED
+- **Description**: Foreign key to users table
+- **Required**: Yes
+- **Constraints**:
+  - Foreign key to `users.id`
+  - Cascade on delete
+
+### `created_at` / `updated_at`
+- **Type**: TIMESTAMP
+- **Description**: When user joined the team
+- **Automatically managed**: Yes
+
+## Unique Constraints
+
+### Composite Unique Index
+Prevents duplicate memberships:
+
+```php
+$table->unique(['team_id', 'user_id']);
+```
+
+This ensures a user can only be a member of a team once.
+
+## Usage Examples
+
+### Adding a Member to a Team
+
+```php
+use App\Models\Team;
+use App\Models\User;
+
+$team = Team::find(1);
+$user = User::find(2);
+
+// Method 1: Using attach
+$team->users()->attach($user->id);
+
+// Method 2: Using sync (without detaching)
+$team->users()->syncWithoutDetaching([$user->id]);
+
+// With timestamps
+$team->users()->attach($user->id, [
+    'created_at' => now(),
+    'updated_at' => now(),
+]);
+```
+
+### Removing a Member from a Team
+
+```php
+$team = Team::find(1);
+$user = User::find(2);
+
+// Detach single user
+$team->users()->detach($user->id);
+
+// Detach multiple users
+$team->users()->detach([2, 3, 4]);
+
+// Remove all members
+$team->users()->detach();
+```
+
+### Checking Membership
+
+```php
+$team = Team::find(1);
+$user = User::find(2);
+
+// Method 1: Using contains
+if ($team->users->contains($user)) {
+    // User is a member
+}
+
+// Method 2: Using where
+$isMember = $team->users()->where('users.id', $user->id)->exists();
+
+// Method 3: From user side
+$belongsToTeam = $user->teams()->where('teams.id', $team->id)->exists();
+```
+
+### Getting Team Members
+
+```php
+$team = Team::find(1);
+
+// Get all members
+$members = $team->users;
+
+// Get members with specific attributes
+$members = $team->users()->get(['users.id', 'users.name', 'users.email']);
+
+// Count members
+$memberCount = $team->users()->count();
+
+// Get recent members
+$recentMembers = $team->users()
+    ->orderByPivot('created_at', 'desc')
+    ->limit(10)
+    ->get();
+```
+
+### Getting User's Teams
+
+```php
+$user = User::find(1);
+
+// Get all teams user belongs to
+$teams = $user->teams;
+
+// Get teams with owner information
+$teams = $user->teams()->with('owner')->get();
+
+// Count teams
+$teamCount = $user->teams()->count();
+```
+
+## Query Performance
+
+### Eager Loading
+
+Always eager load relationships to avoid N+1 queries:
+
+```php
+// Bad - N+1 query problem
+$teams = Team::all();
+foreach ($teams as $team) {
+    echo $team->users->count(); // Additional query per team
+}
+
+// Good - Single query
+$teams = Team::withCount('users')->get();
+foreach ($teams as $team) {
+    echo $team->users_count;
+}
+```
+
+### Indexes
+
+The foreign keys automatically create indexes, but you can add more:
+
+```php
+Schema::table('team_user', function (Blueprint $table) {
+    $table->index('created_at'); // For sorting by join date
+});
+```
+
+## Adding Additional Pivot Data
+
+You can add extra columns to store membership-specific data:
+
+### Migration
+
+```php
+Schema::table('team_user', function (Blueprint $table) {
+    $table->string('role')->default('member')->after('user_id');
+    $table->boolean('is_active')->default(true)->after('role');
+});
+```
+
+### Model Configuration
+
+```php
+// In User model
+public function teams(): BelongsToMany
+{
+    return $this->belongsToMany(Team::class)
+        ->withPivot('role', 'is_active')
+        ->withTimestamps();
+}
+```
+
+### Usage
+
+```php
+// Attach with role
+$team->users()->attach($user->id, [
+    'role' => 'admin',
+    'is_active' => true,
+]);
+
+// Access pivot data
+foreach ($team->users as $user) {
+    echo $user->pivot->role; // admin
+    echo $user->pivot->created_at; // When joined
+}
+
+// Update pivot data
+$team->users()->updateExistingPivot($user->id, [
+    'role' => 'manager',
+]);
+```
+
+## Cascade Behavior
+
+When teams or users are deleted:
+
+### Team Deleted
+All `team_user` records for that team are automatically deleted:
+
+```php
+$team->delete(); // All memberships removed
+```
+
+### User Deleted
+All `team_user` records for that user are automatically deleted:
+
+```php
+$user->delete(); // Removed from all teams
+```
+
+## Testing
+
+```php
+use App\Models\Team;
+use App\Models\User;
+
+test('user can be added to team', function () {
+    $team = Team::factory()->create();
+    $user = User::factory()->create();
+
+    $team->users()->attach($user->id);
+
+    expect($team->users->contains($user))->toBeTrue();
+    expect($team->users()->count())->toBe(1);
+});
+
+test('user cannot be added to team twice', function () {
+    $team = Team::factory()->create();
+    $user = User::factory()->create();
+
+    $team->users()->attach($user->id);
+
+    // This will throw a database exception due to unique constraint
+    expect(fn () => $team->users()->attach($user->id))
+        ->toThrow(\Illuminate\Database\QueryException::class);
+});
+
+test('removing user from team works', function () {
+    $team = Team::factory()->create();
+    $user = User::factory()->create();
+
+    $team->users()->attach($user->id);
+    expect($team->users()->count())->toBe(1);
+
+    $team->users()->detach($user->id);
+    expect($team->users()->count())->toBe(0);
+});
+```
+
+## Next Steps
+
+- [Team Invitations Table](/multi-tenancy/database/invitations-table) - Invite system
+- [Managing Members](/multi-tenancy/teams/managing-members) - UI for member management

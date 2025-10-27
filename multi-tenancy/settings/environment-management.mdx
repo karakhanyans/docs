@@ -1,0 +1,491 @@
+---
+title: Environment Management
+description: How settings are stored and managed in .env files
+icon: 'file-code'
+---
+
+## Overview
+
+Larafast Multi-Tenancy uses a custom **EnvManager** system that allows administrators to update environment variables directly from the admin panel. This guide explains how it works and how you can leverage it.
+
+## How It Works
+
+### The EnvManager Class
+
+**Location:** `app/Helpers/EnvManager.php`
+
+This helper class provides methods to read, write, and delete environment variables in your `.env` file safely.
+
+```php
+$envManager = new EnvManager;
+
+// Read a value
+$appName = $envManager->get('APP_NAME');
+
+// Write a single value
+$envManager->set('APP_NAME', 'My New App Name');
+
+// Write multiple values
+$envManager->setMany([
+    'APP_NAME' => 'My App',
+    'APP_URL' => 'https://myapp.com',
+]);
+
+// Delete a value
+$envManager->delete('OLD_KEY');
+```
+
+### Value Handling
+
+The EnvManager intelligently handles different value types:
+
+#### Booleans
+```php
+$envManager->set('APP_DEBUG', true);
+// Writes: APP_DEBUG=true
+
+$envManager->set('APP_DEBUG', false);
+// Writes: APP_DEBUG=false
+```
+
+#### Strings with Spaces
+```php
+$envManager->set('APP_NAME', 'My SaaS App');
+// Writes: APP_NAME="My SaaS App"
+```
+
+#### Strings with Special Characters
+```php
+$envManager->set('MAIL_PASSWORD', 'p@ssw0rd#123');
+// Writes: MAIL_PASSWORD="p@ssw0rd#123"
+```
+
+#### Numbers
+```php
+$envManager->set('MAX_USERS', 100);
+// Writes: MAX_USERS=100
+```
+
+#### Null Values
+```php
+$envManager->set('OPTIONAL_KEY', null);
+// Writes: OPTIONAL_KEY=
+```
+
+### How Updates Work
+
+When you click "Save Changes" in the Settings pages:
+
+1. **Form Submission** - Filament collects form data
+2. **Validation** - Data is validated against rules
+3. **EnvManager Called** - Updates .env file
+4. **File Write** - New values written to `.env`
+5. **Config Refresh** - Laravel config automatically updates
+6. **Success Notification** - User sees confirmation
+
+**No Server Restart Required!** Changes take effect immediately for new requests.
+
+## The `.env` File
+
+### File Location
+
+Your environment file is located at the project root:
+```
+/your-project/.env
+```
+
+### File Format
+
+The `.env` file uses key=value pairs:
+
+```bash
+# Application Settings
+APP_NAME="My SaaS App"
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://myapp.com
+
+# Database
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_DATABASE=mydb
+
+# Mail
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.mailtrap.io
+MAIL_FROM_ADDRESS=noreply@myapp.com
+
+# Social Auth
+GITHUB_CLIENT_ID=abc123
+GITHUB_CLIENT_SECRET=xyz789
+```
+
+### Updating Mechanism
+
+The EnvManager reads the entire file, updates the specific key(s), and writes it back:
+
+```php
+// Before
+APP_NAME="Old Name"
+
+// After $envManager->set('APP_NAME', 'New Name')
+APP_NAME="New Name"
+```
+
+**Preserves:**
+- ✅ Comments
+- ✅ Empty lines
+- ✅ Order of keys
+- ✅ Other unchanged values
+
+## Security Considerations
+
+### File Permissions
+
+The `.env` file should have restricted permissions:
+
+```bash
+chmod 600 .env
+```
+
+This ensures only the application owner can read/write it.
+
+### Never Commit to Version Control
+
+Your `.gitignore` should include:
+
+```bash
+.env
+.env.backup
+.env.production
+```
+
+**Why?**
+- Contains sensitive credentials
+- API keys and secrets
+- Database passwords
+- OAuth secrets
+
+### Backup Before Changes
+
+The EnvManager doesn't automatically backup. Consider adding a backup step:
+
+```bash
+# Manual backup
+cp .env .env.backup
+
+# Automated backup in deployment
+cp .env .env.$(date +%Y%m%d_%H%M%S)
+```
+
+### Environment-Specific Files
+
+Use different files for different environments:
+
+```bash
+.env.local       # Local development
+.env.staging     # Staging server
+.env.production  # Production server
+```
+
+Laravel automatically loads `.env` but you can specify others:
+
+```bash
+# Load specific env file
+php artisan config:cache --env=staging
+```
+
+## Integrating EnvManager in Your Code
+
+### Basic Usage
+
+```php
+use App\Helpers\EnvManager;
+
+$envManager = new EnvManager;
+
+// Get current value
+$currentName = $envManager->get('APP_NAME');
+
+// Update value
+$envManager->set('APP_NAME', 'Updated Name');
+
+// Check if key exists
+if ($envManager->get('CUSTOM_KEY') !== null) {
+    // Key exists
+}
+```
+
+### In Filament Pages
+
+The Settings pages use EnvManager in their `save()` method:
+
+```php
+public function save(): void
+{
+    $data = $this->form->getState();
+
+    $envManager = new EnvManager;
+    $envManager->setMany([
+        'APP_NAME' => $data['app_name'],
+        'APP_DEBUG' => $data['debug_enabled'],
+        'MAIL_FROM_ADDRESS' => $data['mail_from_address'],
+    ]);
+
+    Notification::make()
+        ->title('Settings saved successfully')
+        ->success()
+        ->send();
+}
+```
+
+### In Controllers
+
+```php
+use App\Helpers\EnvManager;
+
+class SettingsController extends Controller
+{
+    public function updateSettings(Request $request)
+    {
+        $envManager = new EnvManager;
+
+        $envManager->setMany([
+            'CUSTOM_SETTING' => $request->input('custom_setting'),
+            'FEATURE_ENABLED' => $request->boolean('feature_enabled'),
+        ]);
+
+        return redirect()->back()->with('success', 'Settings updated');
+    }
+}
+```
+
+### In Artisan Commands
+
+```php
+use App\Helpers\EnvManager;
+use Illuminate\Console\Command;
+
+class UpdateEnvCommand extends Command
+{
+    protected $signature = 'env:update {key} {value}';
+
+    public function handle()
+    {
+        $envManager = new EnvManager;
+        $envManager->set(
+            $this->argument('key'),
+            $this->argument('value')
+        );
+
+        $this->info('Environment variable updated');
+    }
+}
+```
+
+## Advanced Scenarios
+
+### Conditional Updates
+
+Only update if value changed:
+
+```php
+$envManager = new EnvManager;
+$currentValue = $envManager->get('APP_NAME');
+
+if ($currentValue !== $newValue) {
+    $envManager->set('APP_NAME', $newValue);
+}
+```
+
+### Bulk Updates with Validation
+
+```php
+$updates = [
+    'APP_NAME' => $request->input('app_name'),
+    'APP_URL' => $request->input('app_url'),
+];
+
+// Validate
+$validated = validator($updates, [
+    'APP_NAME' => 'required|string|max:255',
+    'APP_URL' => 'required|url',
+])->validate();
+
+// Update all at once
+$envManager->setMany($validated);
+```
+
+### Restoring from Backup
+
+```php
+// Create backup
+copy('.env', '.env.backup');
+
+// Make changes
+$envManager->set('APP_NAME', 'New Name');
+
+// Restore if something goes wrong
+if ($error) {
+    copy('.env.backup', '.env');
+}
+```
+
+## Configuration Cache
+
+### How Laravel Caches Config
+
+Laravel can cache configuration for performance:
+
+```bash
+php artisan config:cache
+```
+
+This creates a single file with all configuration, ignoring `.env`.
+
+### When Using EnvManager
+
+If config is cached, changes won't take effect until you clear the cache:
+
+```bash
+php artisan config:clear
+```
+
+**Recommendation:** Don't cache config in development. Only cache in production after ensuring environment is stable.
+
+### Checking if Config is Cached
+
+```php
+if (app()->configurationIsCached()) {
+    // Config is cached
+    // Clear cache for changes to take effect
+}
+```
+
+## Best Practices
+
+### 1. Validate Before Saving
+
+Always validate environment values before writing:
+
+```php
+$validator = Validator::make($data, [
+    'APP_URL' => 'required|url',
+    'MAIL_FROM_ADDRESS' => 'required|email',
+]);
+
+if ($validator->fails()) {
+    // Show errors
+    return;
+}
+
+$envManager->setMany($validator->validated());
+```
+
+### 2. Use Transactions for Critical Updates
+
+```php
+DB::transaction(function () use ($envManager, $data) {
+    // Update database
+    Setting::update($data);
+
+    // Update environment
+    $envManager->setMany($data);
+});
+```
+
+### 3. Log Changes
+
+Track who changed what:
+
+```php
+use Spatie\Activitylog\Facades\Activity;
+
+Activity::log('Updated APP_NAME from "Old" to "New"');
+
+$envManager->set('APP_NAME', 'New');
+```
+
+### 4. Provide Rollback Mechanism
+
+```php
+$backup = [
+    'APP_NAME' => $envManager->get('APP_NAME'),
+    'APP_URL' => $envManager->get('APP_URL'),
+];
+
+try {
+    $envManager->setMany($newValues);
+} catch (\Exception $e) {
+    // Rollback
+    $envManager->setMany($backup);
+    throw $e;
+}
+```
+
+### 5. Clear Caches After Updates
+
+```php
+$envManager->set('APP_NAME', 'New Name');
+
+// Clear caches
+Artisan::call('config:clear');
+Artisan::call('cache:clear');
+Artisan::call('view:clear');
+```
+
+## Troubleshooting
+
+### Changes Not Taking Effect
+
+**Solutions:**
+1. Clear config cache: `php artisan config:clear`
+2. Check file permissions on `.env`
+3. Verify file was actually updated: `cat .env | grep KEY`
+4. Restart queue workers: `php artisan queue:restart`
+
+### File Permission Errors
+
+**Error:** "Permission denied when writing to .env"
+
+**Solution:**
+```bash
+# Set proper permissions
+chmod 600 .env
+chown www-data:www-data .env  # Linux/Apache
+chown nginx:nginx .env  # Linux/Nginx
+```
+
+### Values Not Escaped Properly
+
+**Problem:** Values with special characters breaking
+
+**Solution:** EnvManager handles this automatically, but verify:
+```php
+$envManager->set('PASSWORD', 'p@ss#word');
+// Should write: PASSWORD="p@ss#word"
+```
+
+### Concurrent Updates
+
+**Problem:** Multiple admins updating settings simultaneously
+
+**Solution:** Use locks:
+```php
+use Illuminate\Support\Facades\Cache;
+
+$lock = Cache::lock('env-update', 10);
+
+if ($lock->get()) {
+    try {
+        $envManager->setMany($data);
+    } finally {
+        $lock->release();
+    }
+}
+```
+
+## Next Steps
+
+- [General Settings](/multi-tenancy/settings/general-settings) - Using general application settings
+- [Social Authentication](/multi-tenancy/settings/social-authentication) - OAuth provider configuration

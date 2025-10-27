@@ -1,0 +1,93 @@
+---
+title: Creating Teams
+description: How team creation works in your application
+icon: 'plus'
+---
+
+## Overview
+
+Larafast Multi-Tenancy comes with a **built-in team creation system**. Users are automatically prompted to create their first team when they log in for the first time. No additional setup is required - everything is already configured and ready to use.
+
+## How It Works
+
+### First-Time User Experience
+
+1. **User registers/logs in** - New user creates an account or logs in
+2. **Automatic redirect** - If the user has no teams, they're automatically redirected to the team creation page
+3. **Create team** - User fills in team name and description (optional)
+4. **Instant access** - Team is created, user becomes the owner, and gains immediate access to the application
+
+### Team Creation Form
+
+The team creation page includes:
+- **Team Name** (required) - The name of the team/organization
+- **Description** (optional) - A brief description of the team's purpose
+
+### What Happens Automatically
+
+When a user creates a team, the system automatically:
+1. ✅ Creates the team record in the database
+2. ✅ Sets the user as the team owner
+3. ✅ Adds the user as a team member
+4. ✅ Sets this team as the user's current/active team
+5. ✅ Redirects to the team dashboard
+
+## Team Creation Page
+
+The team creation interface is already built and located at:
+- **File**: `app/Filament/App/Pages/Tenancy/RegisterTeam.php`
+- **URL**: Automatically shown when needed (no direct URL access)
+
+You can customize this page to add additional fields or change the styling to match your brand.
+
+## Multiple Teams
+
+Users can create multiple teams:
+
+1. Click on the current team name in the top navigation
+2. Select "New team" from the dropdown
+3. Fill in the team information
+4. Start using the new team immediately
+
+The system supports unlimited teams per user, and users can easily switch between their teams using the tenant switcher in the navigation bar.
+
+## Customization
+
+### Adding Custom Fields
+
+If you want to collect additional information during team creation (e.g., company size, industry), you can edit the `RegisterTeam.php` file and add more form fields:
+
+**Location:** `app/Filament/App/Pages/Tenancy/RegisterTeam.php`
+
+The form uses Filament's form builder, so you can add any field types (text inputs, selects, file uploads, etc.).
+
+### Disabling Team Creation
+
+If you want to control team creation (e.g., only admins can create teams), you can disable the registration page in the panel configuration:
+
+**Location:** `app/Providers/Filament/AppPanelProvider.php`
+
+Simply remove or comment out this line:
+```php
+// ->tenantRegistration(RegisterTeam::class)
+```
+
+This will prevent users from creating their own teams. You would then need to create teams programmatically or through an admin interface.
+
+## Admin Team Management
+
+Administrators can view and manage all teams in the system through the Admin Panel:
+- **URL**: `/admin/teams`
+- **Access**: Requires admin role
+
+From here, admins can:
+- View all teams across the system
+- Create teams for users
+- Edit team information
+- Delete teams
+- Manage team members
+
+## Next Steps
+
+- [Managing Team Members](/multi-tenancy/teams/managing-members) - Learn how members are managed
+- [Team Settings](/multi-tenancy/teams/team-settings) - Customize team information

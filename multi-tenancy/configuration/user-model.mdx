@@ -1,0 +1,170 @@
+---
+title: User Model Setup
+description: Configuring the User model for multi-tenancy
+icon: 'user'
+---
+
+## Required Interfaces
+
+The User model must implement three interfaces for Filament multi-tenancy:
+
+```php
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Models\Contracts\HasDefaultTenant;
+use Filament\Models\Contracts\HasTenants;
+
+class User extends Authenticatable implements FilamentUser, HasTenants, HasDefaultTenant
+{
+    // ...
+}
+```
+
+## Required Methods
+
+### 1. getTenants()
+Returns all teams the user can access:
+
+```php
+public function getTenants(Panel $panel): array|Collection
+{
+    return $this->allTeams();
+}
+
+public function allTeams(): Collection
+{
+    return $this->teams()
+        ->union($this->ownedTeams()->toBase())
+        ->orderBy('created_at', 'desc')
+        ->get();
+}
+```
+
+### 2. canAccessTenant()
+Checks if user can access a specific team:
+
+```php
+public function canAccessTenant(Model $tenant): bool
+{
+    return $this->allTeams()->contains($tenant);
+}
+```
+
+### 3. getDefaultTenant()
+Returns the default team for the user:
+
+```php
+public function getDefaultTenant(Panel $panel): ?Model
+{
+    return $this->currentTeam ?? $this->allTeams()->first();
+}
+```
+
+### 4. canAccessPanel()
+Controls panel access:
+
+```php
+public function canAccessPanel(Panel $panel): bool
+{
+    if ($panel->getId() === 'admin') {
+        return $this->hasRole('admin');
+    }
+
+    return true;
+}
+```
+
+## Relationships
+
+### Current Team
+```php
+public function currentTeam(): BelongsTo
+{
+    return $this->belongsTo(Team::class, 'current_team_id');
+}
+```
+
+### Teams (Member of)
+```php
+public function teams(): BelongsToMany
+{
+    return $this->belongsToMany(Team::class)
+        ->withTimestamps();
+}
+```
+
+### Owned Teams
+```php
+public function ownedTeams(): HasMany
+{
+    return $this->hasMany(Team::class, 'owner_id');
+}
+```
+
+## Complete Example
+
+```php
+<?php
+
+namespace App\Models;
+
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Models\Contracts\HasDefaultTenant;
+use Filament\Models\Contracts\HasTenants;
+use Filament\Panel;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+
+class User extends Authenticatable implements FilamentUser, HasTenants, HasDefaultTenant
+{
+    public function getTenants(Panel $panel): array|Collection
+    {
+        return $this->allTeams();
+    }
+
+    public function canAccessTenant(Model $tenant): bool
+    {
+        return $this->allTeams()->contains($tenant);
+    }
+
+    public function getDefaultTenant(Panel $panel): ?Model
+    {
+        return $this->currentTeam ?? $this->allTeams()->first();
+    }
+
+    public function canAccessPanel(Panel $panel): bool
+    {
+        if ($panel->getId() === 'admin') {
+            return $this->hasRole('admin');
+        }
+
+        return true;
+    }
+
+    public function allTeams(): Collection
+    {
+        return $this->teams()
+            ->union($this->ownedTeams()->toBase())
+            ->orderBy('created_at', 'desc')
+            ->get();
+    }
+
+    public function teams(): BelongsToMany
+    {
+        return $this->belongsToMany(Team::class)
+            ->withTimestamps();
+    }
+
+    public function ownedTeams(): HasMany
+    {
+        return $this->hasMany(Team::class, 'owner_id');
+    }
+
+    public function currentTeam(): BelongsTo
+    {
+        return $this->belongsTo(Team::class, 'current_team_id');
+    }
+}
+```

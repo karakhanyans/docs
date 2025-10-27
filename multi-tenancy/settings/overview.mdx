@@ -1,0 +1,173 @@
+---
+title: Settings Overview
+description: Managing application settings from the admin panel
+icon: 'gear'
+---
+
+## Overview
+
+Larafast Multi-Tenancy includes a **powerful settings management system** that allows administrators to configure application settings, social authentication, and environment variables directly from the admin panel - no need to manually edit configuration files!
+
+## What Settings Can You Manage?
+
+The settings system is organized into different sections:
+
+### 1. General Settings
+Configure core application settings:
+- **Application Name** - Your app's display name
+- **Application URL** - Your app's primary URL
+- **Environment** - Development, staging, or production
+- **Debug Mode** - Enable/disable debug information
+- **Email Configuration** - Default sender email and name
+- **User Registration** - Allow/disable new user signups
+- **Email Verification** - Require email verification for new users
+- **Maintenance Mode** - Put your app in maintenance
+
+### 2. Social Authentication
+Configure OAuth providers for social login:
+- **GitHub** - GitHub OAuth integration
+- **Google** - Google Sign-In
+- **Twitter/X** - Twitter OAuth
+- **Apple** - Sign in with Apple
+- **Facebook** - Facebook Login
+
+Each provider requires Client ID and Client Secret from their respective developer portals.
+
+## How Settings Work
+
+### Storage Method
+
+Settings are stored in your **`.env` file** (not in a database). This means:
+
+✅ **Environment-specific** - Different settings for dev/staging/production
+✅ **Version controlled** - Can be managed via deployment pipelines
+✅ **Fast access** - No database queries needed
+✅ **Laravel native** - Uses Laravel's built-in configuration system
+
+### The Flow
+
+```
+Admin edits setting in panel
+        ↓
+Click "Save Changes"
+        ↓
+EnvManager updates .env file
+        ↓
+Configuration automatically refreshed
+        ↓
+Changes take effect immediately
+```
+
+**No server restart needed!** Changes are applied instantly (though some caching may require clearing).
+
+## Accessing Settings
+
+### Admin Panel
+
+1. **Log in to Admin Panel** - `/admin`
+2. **Click "Settings"** in the navigation
+3. **Choose a section**:
+   - General Settings
+   - Social Authentication
+
+Only users with admin role can access Settings.
+
+### Settings Navigation
+
+The Settings area appears in the admin panel sidebar under its own group. It uses a collapsible cluster structure for organization.
+
+## Security & Permissions
+
+### Who Can Edit Settings?
+
+Only **administrators** can access and modify settings. Regular users and team members cannot see the Settings section.
+
+**Access Control:** `app/Providers/Filament/AdminPanelProvider.php`
+
+Users must have the `admin` role to access the admin panel and settings.
+
+### Sensitive Data Protection
+
+- **OAuth Secrets** - Hidden by default, revealable with eye icon
+- **Encrypted Tokens** - Social account tokens are encrypted in database
+- **Environment File** - `.env` should never be committed to version control
+- **Password Fields** - Use Filament's revealable password inputs
+
+## Built-in Features
+
+### Real-Time Validation
+
+Settings forms validate input before saving:
+- **URL Format** - Validates APP_URL is a valid URL
+- **Email Format** - Validates email addresses
+- **Required Fields** - Ensures critical fields aren't empty
+
+### Conditional Fields
+
+Some fields show/hide based on toggles:
+- Enable social auth → Shows provider configuration sections
+- Enable registration → Shows email verification option
+
+### Visual Feedback
+
+- ✅ **Success notifications** - "Settings saved successfully"
+- ❌ **Error messages** - Clear error descriptions if save fails
+- 🔄 **Loading states** - Shows saving progress
+
+## Default Values
+
+When you first install Larafast Multi-Tenancy, settings come from `.env.example`:
+
+```bash
+APP_NAME=Larafast
+APP_ENV=local
+APP_DEBUG=true
+APP_URL=http://localhost
+MAIL_FROM_ADDRESS="hello@example.com"
+AUTH_USE_SOCIAL_AUTH=true
+AUTH_REGISTRATION_ENABLED=true
+```
+
+You can customize these through the admin panel.
+
+## Configuration Files
+
+Settings from the admin panel update these Laravel configuration files:
+
+- **`config/app.php`** - App name, environment, debug mode
+- **`config/mail.php`** - Email configuration
+- **`config/auth.php`** - Registration, verification settings
+- **`config/services.php`** - OAuth provider credentials
+
+**You don't need to edit these files manually** - the admin panel handles everything!
+
+## Common Tasks
+
+### Changing App Name
+
+1. Go to Settings → General Settings
+2. Update "Application Name"
+3. Click "Save Changes"
+4. New name appears throughout your app immediately
+
+### Setting Up Social Login
+
+1. Go to Settings → Social Authentication
+2. Enable "Use Social Authentication"
+3. Expand the provider section (e.g., GitHub)
+4. Enter Client ID and Client Secret
+5. Click "Save Changes"
+6. Social login buttons appear on login page automatically
+
+### Disabling User Registration
+
+1. Go to Settings → General Settings
+2. Toggle "Registration Enabled" to OFF
+3. Click "Save Changes"
+4. Registration page becomes inaccessible
+
+## Next Steps
+
+- [General Settings](/multi-tenancy/settings/general-settings) - Configure core application settings
+- [Social Authentication](/multi-tenancy/settings/social-authentication) - Set up OAuth providers
+- [Environment Management](/multi-tenancy/settings/environment-management) - How .env updates work

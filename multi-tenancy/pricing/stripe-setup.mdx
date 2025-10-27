@@ -1,0 +1,361 @@
+---
+title: Stripe Setup
+description: Configure Stripe for team subscriptions
+icon: 'stripe'
+---
+
+## Overview
+
+Larafast Multi-Tenancy uses **Laravel Cashier** to integrate with Stripe for team subscriptions. This guide shows you exactly where everything is configured and how to set it up.
+
+## Environment Configuration
+
+Add these Stripe credentials to your `.env` file:
+
+```bash
+# Stripe API Keys
+STRIPE_KEY=pk_test_your_publishable_key_here
+STRIPE_SECRET=sk_test_your_secret_key_here
+STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret_here
+
+# Cashier Configuration
+CASHIER_CURRENCY=usd
+CASHIER_CURRENCY_LOCALE=en_US
+CASHIER_LOGGER=stack
+```
+
+### Getting Your Stripe Keys
+
+1. **Sign up for Stripe** - https://dashboard.stripe.com/register
+2. **Go to Developers → API keys**
+3. **Copy your keys**:
+   - Publishable key (starts with `pk_`)
+   - Secret key (starts with `sk_`)
+4. **Create a webhook** (Developers → Webhooks):
+   - URL: `https://yourapp.com/stripe/webhook`
+   - Events: Select all (Cashier handles filtering)
+   - Copy webhook secret (starts with `whsec_`)
+
+## Creating Stripe Products
+
+You need to create products and prices in Stripe that match your pricing plans:
+
+### In Stripe Dashboard
+
+1. **Go to Products** - https://dashboard.stripe.com/products
+2. **Click "Add product"**
+3. **Create each plan**:
+
+#### Example: Starter Plan
+
+- **Name**: Starter Plan
+- **Description**: For growing teams
+- **Pricing**:
+  - **Price**: $29.99
+  - **Billing period**: Monthly
+  - **Currency**: USD
+- **Click "Save product"**
+- **Copy the Price ID** - Looks like `price_1ABC...xyz`
+
+#### Example: Pro Plan
+
+- **Name**: Pro Plan
+- **Description**: For large organizations
+- **Pricing**:
+  - **Price**: $99.99
+  - **Billing period**: Monthly
+  - **Currency**: USD
+- **Click "Save product"**
+- **Copy the Price ID**
+
+## Configuring Your Plans
+
+Update your pricing configuration with the Stripe Price IDs:
+
+**Location:** `lang/en/prices.php`
+
+```php
+'stripe' => [
+    [
+        'name' => 'Free',
+        'slug' => 'free',  // No Stripe Price ID needed for free
+        'description' => 'Perfect for small teams getting started',
+        'price' => 0,
+        'interval' => 'month',
+        'features' => [
+            'Up to 3 projects',
+            '5 team members',
+            'Basic features',
+        ],
+    ],
+    [
+        'name' => 'Starter',
+        'slug' => 'price_1ABC...starter',  // ← Your Stripe Price ID here
+        'description' => 'For growing teams',
+        'price' => '29.99',
+        'interval' => 'month',
+        'features' => [
+            'Unlimited projects',
+            'Unlimited members',
+            'Advanced features',
+        ],
+        'bestseller' => true,
+    ],
+    [
+        'name' => 'Pro',
+        'slug' => 'price_1ABC...pro',  // ← Your Stripe Price ID here
+        'description' => 'For large organizations',
+        'price' => '99.99',
+        'interval' => 'month',
+        'features' => [
+            'Everything in Starter',
+            'Priority support',
+            'Custom integrations',
+        ],
+    ],
+],
+```
+
+**Important:** The `slug` field must match your Stripe Price ID exactly!
+
+## Billing Provider Configuration
+
+The Stripe billing provider is already configured in the panel:
+
+**Location:** `app/Providers/Filament/AppPanelProvider.php`
+
+```php
+->tenantBillingProvider(new \App\Filament\App\Billing\Providers\StripeBillingProvider())
+->requiresTenantSubscription(false)  // Set to true to require subscriptions
+```
+
+### Billing Provider Implementation
+
+**Location:** `app/Filament/App/Billing/Providers/StripeBillingProvider.php`
+
+```php
+<?php
+
+namespace App\Filament\App\Billing\Providers;
+
+use Filament\Billing\Providers\Contracts\BillingProvider;
+use Illuminate\Http\RedirectResponse;
+
+class StripeBillingProvider implements BillingProvider
+{
+    public function getRouteAction(): array|string|\Closure
+    {
+        return function (): RedirectResponse {
+            return redirect()->route('stripe.billing');
+        };
+    }
+
+    public function getSubscribedMiddleware(): string
+    {
+        return RedirectIfTeamNotSubscribed::class;
+    }
+}
+```
+
+This provider tells Filament:
+- Where to redirect when users click "Billing"
+- What middleware to use for subscription checks
+
+## Subscription Middleware
+
+**Location:** `app/Http/Middleware/RedirectIfTeamNotSubscribed.php`
+
+This middleware checks if the team has an active subscription:
+
+```php
+public function handle($request, Closure $next)
+{
+    $team = Filament::getTenant();
+
+    if (!$team->subscribed()) {
+        return redirect()->route('stripe.billing');
+    }
+
+    return $next($request);
+}
+```
+
+**Register it in:** `bootstrap/app.php`
+
+```php
+->withMiddleware(function (Middleware $middleware) {
+    $middleware->alias([
+        'subscribed' => \App\Http\Middleware\RedirectIfTeamNotSubscribed::class,
+    ]);
+})
+```
+
+## Team Model Setup
+
+Your Team model needs the `Billable` trait for Cashier:
+
+**Location:** `app/Models/Team.php`
+
+```php
+use Laravel\Cashier\Billable;
+
+class Team extends Model
+{
+    use Billable;
+
+    // ... rest of model
+}
+```
+
+This adds methods like:
+- `$team->subscribed()` - Check if subscribed
+- `$team->subscription()` - Get active subscription
+- `$team->newSubscription()` - Create new subscription
+- `$team->invoicesIncludingPending()` - Get invoices
+
+## Routes Configuration
+
+The billing routes are already set up:
+
+**Location:** `routes/web.php`
+
+```php
+// Stripe billing route
+Route::get('/billing', [StripeController::class, 'billing'])
+    ->middleware(['auth'])
+    ->name('stripe.billing');
+
+// Stripe webhook (handled by Cashier)
+Route::post('/stripe/webhook', [WebhookController::class, 'handleWebhook']);
+```
+
+## Plans Display Page
+
+The pricing plans are displayed using a Livewire component:
+
+**Location:** `app/Livewire/Plans.php`
+
+```php
+public function render()
+{
+    $plans = __('prices.stripe');  // Gets plans from lang/en/prices.php
+    return view('livewire.plans', ['plans' => $plans]);
+}
+```
+
+**View Location:** `resources/views/livewire/plans.blade.php`
+
+This displays your pricing cards with:
+- Plan names and prices
+- Feature lists
+- "Subscribe" buttons that link to Stripe checkout
+
+## Testing Stripe Integration
+
+### Using Test Mode
+
+1. **Use test API keys** - Keys starting with `pk_test_` and `sk_test_`
+2. **Test card numbers**:
+   - **Success**: 4242 4242 4242 4242
+   - **Decline**: 4000 0000 0000 0002
+   - **3D Secure**: 4000 0027 6000 3184
+3. **Any future expiry date** - e.g., 12/34
+4. **Any 3-digit CVC** - e.g., 123
+
+### Test the Flow
+
+1. Create a team
+2. Click "Upgrade" or "Billing"
+3. Select a plan
+4. Complete checkout with test card
+5. Verify subscription in:
+   - Your app's database
+   - Stripe dashboard
+   - Admin panel
+
+## Database Tables
+
+Cashier automatically creates these tables:
+
+```bash
+php artisan migrate
+```
+
+- `subscriptions` - Team subscriptions
+- `subscription_items` - Subscription line items
+- `payment_methods` - Stored payment methods
+
+## Webhooks
+
+### Setting Up Webhooks
+
+1. **Go to** Stripe Dashboard → Developers → Webhooks
+2. **Add endpoint**: `https://yourapp.com/stripe/webhook`
+3. **Select events** (or select all - Cashier filters):
+   - `customer.subscription.created`
+   - `customer.subscription.updated`
+   - `customer.subscription.deleted`
+   - `invoice.payment_succeeded`
+   - `invoice.payment_failed`
+4. **Copy webhook signing secret** → Add to `.env` as `STRIPE_WEBHOOK_SECRET`
+
+### Testing Webhooks Locally
+
+Use Stripe CLI to forward webhooks to localhost:
+
+```bash
+# Install Stripe CLI
+brew install stripe/stripe-cli/stripe
+
+# Login
+stripe login
+
+# Forward webhooks
+stripe listen --forward-to localhost:8000/stripe/webhook
+```
+
+## Switching to Live Mode
+
+When you're ready for production:
+
+1. **Activate your Stripe account** - Complete business verification
+2. **Create live products** - Recreate your products in live mode
+3. **Update environment variables**:
+   ```bash
+   STRIPE_KEY=pk_live_your_live_key
+   STRIPE_SECRET=sk_live_your_live_key
+   STRIPE_WEBHOOK_SECRET=whsec_your_live_webhook_secret
+   ```
+4. **Update price IDs** - In `lang/en/prices.php` with live Price IDs
+5. **Create live webhook** - Point to your production URL
+6. **Test thoroughly** - Use a real card in test environment first
+
+## Troubleshooting
+
+### Subscription not showing as active
+
+Check:
+- Team has `subscribed()` method returning true
+- Subscription exists in database
+- Stripe webhook is configured
+- `.env` has correct keys
+
+### Webhook not working
+
+- Verify `STRIPE_WEBHOOK_SECRET` is set
+- Check webhook URL is accessible
+- Verify webhook is receiving events in Stripe dashboard
+- Check Laravel logs for webhook errors
+
+### Payment failing
+
+- Verify Stripe account is activated (for live mode)
+- Check card is valid (use test cards in test mode)
+- Verify currency matches (USD vs EUR, etc.)
+- Check Stripe dashboard for error details
+
+## Next Steps
+
+- [Plans Configuration](/multi-tenancy/pricing/plans-configuration) - Customize your pricing
+- [Subscription Features](/multi-tenancy/pricing/subscription-features) - Implement gated features
+- [Billing Portal](/multi-tenancy/pricing/billing-portal) - Customer billing management

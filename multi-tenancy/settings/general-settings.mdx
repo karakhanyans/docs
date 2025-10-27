@@ -1,0 +1,296 @@
+---
+title: General Settings
+description: Configure core application settings
+icon: 'sliders'
+---
+
+## Overview
+
+The General Settings page allows administrators to configure core application behavior including app information, email configuration, user registration, and maintenance mode - all from a user-friendly admin interface.
+
+## Accessing General Settings
+
+1. **Log in to Admin Panel** - Navigate to `/admin`
+2. **Click "Settings"** in the sidebar
+3. **Select "General Settings"**
+
+## Available Settings
+
+### Application Information
+
+#### Application Name
+- **Field**: `APP_NAME`
+- **Description**: The display name of your application
+- **Used In**: Email templates, page titles, notifications, branding
+- **Example**: "Acme Project Manager", "My SaaS App"
+
+**Where it appears:**
+- Browser tab titles
+- Email footers
+- Welcome messages
+- Throughout the UI
+
+#### Application URL
+- **Field**: `APP_URL`
+- **Description**: The primary URL where your application is hosted
+- **Format**: Must be a valid URL with protocol
+- **Examples**:
+  - `https://myapp.com`
+  - `https://app.mycompany.com`
+
+**Important for:**
+- Email links
+- OAuth redirects
+- Asset URLs
+- Sitemap generation
+
+#### Environment
+- **Field**: `APP_ENV`
+- **Options**:
+  - `local` - Local development
+  - `staging` - Staging/test environment
+  - `production` - Live production environment
+- **Default**: `local`
+
+**Affects:**
+- Error reporting verbosity
+- Logging behavior
+- Feature availability
+
+#### Debug Mode
+- **Field**: `APP_DEBUG`
+- **Type**: Toggle (On/Off)
+- **Default**: ON for local, OFF for production
+
+**When ON:**
+- ✅ Detailed error messages shown
+- ✅ Stack traces visible
+- ✅ Helpful for development
+
+**When OFF:**
+- ❌ Generic error pages shown
+- ❌ Error details hidden from users
+- ✅ Required for production (security)
+
+⚠️ **Warning**: Never enable debug mode in production! It exposes sensitive information.
+
+### Email Configuration
+
+#### Mail From Address
+- **Field**: `MAIL_FROM_ADDRESS`
+- **Description**: Default sender email address for outbound emails
+- **Format**: Valid email address
+- **Example**: `noreply@myapp.com`, `hello@company.com`
+
+**Used for:**
+- Password reset emails
+- Team invitations
+- Notification emails
+- System alerts
+
+#### Mail From Name
+- **Field**: `MAIL_FROM_NAME`
+- **Description**: Display name for outbound emails
+- **Default**: Uses `APP_NAME` if not set
+- **Example**: "Acme Team", "Support Team"
+
+**Appears as:**
+```
+From: "Acme Team" <noreply@acme.com>
+```
+
+### User Registration
+
+#### Registration Enabled
+- **Field**: `AUTH_REGISTRATION_ENABLED`
+- **Type**: Toggle (On/Off)
+- **Default**: ON
+
+**When ON:**
+- ✅ Users can create new accounts
+- ✅ Registration page accessible
+- ✅ "Sign up" links appear
+
+**When OFF:**
+- ❌ Registration page shows "Registration disabled"
+- ❌ Only admins can create accounts
+- ✅ Useful for invite-only applications
+
+**Use Cases:**
+- Private beta testing
+- Enterprise deployments
+- Temporarily closing registration
+- Invite-only applications
+
+#### Email Verification Required
+- **Field**: `AUTH_EMAIL_VERIFICATION_REQUIRED`
+- **Type**: Toggle (On/Off)
+- **Default**: OFF
+
+**When ON:**
+- ✅ Users must verify email before full access
+- ✅ Verification email sent on registration
+- ✅ Extra security layer
+
+**When OFF:**
+- ❌ Users get immediate access
+- ❌ No verification email sent
+
+**Recommended:** Enable for public applications to prevent spam accounts.
+
+### Maintenance Mode
+
+#### Enable Maintenance Mode
+- **Type**: Toggle (On/Off)
+- **Description**: Puts your application in maintenance mode
+
+**When ON:**
+- 🔧 Site shows "We'll be back soon" page
+- 🔧 Only admins can access
+- 🔧 Useful during updates or migrations
+
+**When OFF:**
+- ✅ Normal operation
+- ✅ All users can access
+
+**Via Admin Panel:**
+- Toggle the switch
+- Click "Save Changes"
+
+**Via Command Line:**
+```bash
+# Enable maintenance mode
+php artisan down --secret="my-secret-token"
+
+# Disable maintenance mode
+php artisan up
+```
+
+**Accessing during maintenance:**
+- Admins are automatically allowed
+- Or visit: `https://yourapp.com/my-secret-token` to bypass
+
+## How to Update Settings
+
+### Step-by-Step
+
+1. **Navigate** to General Settings page
+2. **Modify** the fields you want to change
+3. **Review** your changes
+4. **Click** "Save Changes" button
+5. **Confirmation** - "Settings saved successfully" notification appears
+
+### Changes Take Effect Immediately
+
+Most changes are applied instantly. However, some might require:
+
+**Cache Clearing:**
+```bash
+php artisan config:clear
+php artisan cache:clear
+```
+
+**Queue Restart** (if using queues):
+```bash
+php artisan queue:restart
+```
+
+## Behind the Scenes
+
+### How It Works
+
+When you save settings:
+
+1. **Filament form** collects your input
+2. **GeneralSettings page** processes the data
+3. **EnvManager** updates the `.env` file
+4. **Laravel config** automatically refreshes
+5. **Changes** are live!
+
+**Location:** `app/Filament/Admin/Clusters/Settings/Pages/GeneralSettings.php`
+
+### The `.env` File
+
+Your settings are written to the `.env` file in your project root:
+
+```bash
+APP_NAME="My SaaS App"
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://myapp.com
+
+MAIL_FROM_ADDRESS=noreply@myapp.com
+MAIL_FROM_NAME="${APP_NAME}"
+
+AUTH_REGISTRATION_ENABLED=true
+AUTH_EMAIL_VERIFICATION_REQUIRED=true
+```
+
+**Important:** The `.env` file should:
+- ✅ Be included in `.gitignore`
+- ✅ Never be committed to version control
+- ✅ Be backed up securely
+- ✅ Have proper file permissions (600)
+
+## Best Practices
+
+### Production Checklist
+
+Before going live, ensure:
+
+- ✅ `APP_ENV` = `production`
+- ✅ `APP_DEBUG` = `false`
+- ✅ `APP_URL` = your actual domain
+- ✅ `MAIL_FROM_ADDRESS` = valid email
+- ✅ Email verification enabled (recommended)
+
+### Security Recommendations
+
+1. **Disable Debug in Production**
+   - Prevents sensitive data exposure
+   - Shows user-friendly error pages
+
+2. **Use Environment-Specific Settings**
+   - Different configs for dev/staging/prod
+   - Manage via deployment pipelines
+
+3. **Regular Backups**
+   - Back up your `.env` file
+   - Store securely (not in repo!)
+
+4. **Monitor Changes**
+   - Check activity logs
+   - Track who changes what
+
+## Troubleshooting
+
+### Changes Not Appearing
+
+**Solution:** Clear configuration cache:
+```bash
+php artisan config:clear
+```
+
+### Email Not Sending
+
+**Check:**
+1. `MAIL_FROM_ADDRESS` is valid
+2. Mail server is configured in `.env`
+3. Test with: `php artisan mail:test`
+
+### App Name Not Updating
+
+**Solution:**
+1. Clear cache: `php artisan config:clear`
+2. Refresh browser (hard reload: Ctrl/Cmd + Shift + R)
+
+### Can't Access After Enabling Maintenance
+
+**Solution:**
+- Access via secret token URL
+- Or disable via command: `php artisan up`
+
+## Next Steps
+
+- [Social Authentication](/multi-tenancy/settings/social-authentication) - Configure OAuth providers
+- [Environment Management](/multi-tenancy/settings/environment-management) - Advanced .env management

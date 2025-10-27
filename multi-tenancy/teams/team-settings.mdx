@@ -1,0 +1,69 @@
+---
+title: Team Settings
+description: How to configure and customize team settings
+icon: 'gear'
+---
+
+## Overview
+
+Team settings allow team owners to configure their team information, view statistics, and manage team-level preferences. The team settings page is **already built** and accessible to all team owners.
+
+## Accessing Team Settings
+
+Team owners can access settings in two ways:
+
+1. **User Menu** - Click your avatar → "Team Settings" or "Team Profile"
+2. **Direct URL** - Navigate to `/app/teams/{team-id}/edit`
+
+## What's Included
+
+The team settings page displays:
+
+### Team Information
+- **Team Name** - Editable
+- **Description** - Optional description field
+- **Creation Date** - When the team was created
+- **Team Owner** - Who owns the team
+
+### Team Statistics
+- **Total Members** - Count of team members
+- **Current Owner** - Owner's name and email
+- **Created Date** - Team creation timestamp
+
+## Editing Team Information
+
+Team owners can update:
+
+1. **Team Name**
+   - Click in the name field
+   - Type new name
+   - Click "Save"
+
+2. **Team Description**
+   - Update the description text area
+   - Explain what your team does
+   - Click "Save"
+
+**Note:** Only team owners can edit team settings. Regular members have read-only access.
+
+## Customization
+
+The team settings page can be customized to add your own fields:
+
+**Location:** `app/Filament/App/Pages/Tenancy/EditTeamProfile.php`
+
+You can add fields like:
+- Team logo/avatar
+- Website URL
+- Company size
+- Industry
+- Timezone
+- Default permissions
+- Custom preferences
+
+The page uses Filament's form builder, so adding fields is straightforward.
+
+## Next Steps
+
+- [Creating Teams](/multi-tenancy/teams/creating-teams) - How teams are created
+- [Managing Members](/multi-tenancy/teams/managing-members) - Member management

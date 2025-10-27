@@ -1,0 +1,372 @@
+---
+title: Team Invitations Table
+description: Managing email-based team invitations
+icon: 'table'
+---
+
+## Overview
+
+The `team_invitations` table manages email invitations to join teams. It stores pending, accepted, and expired invitations.
+
+## Schema
+
+```php
+Schema::create('team_invitations', function (Blueprint $table) {
+    $table->id();
+    $table->foreignId('team_id')->constrained()->cascadeOnDelete();
+    $table->string('email');
+    $table->string('role')->nullable();
+    $table->string('token', 64)->unique();
+    $table->timestamp('expires_at');
+    $table->timestamp('accepted_at')->nullable();
+    $table->timestamps();
+
+    $table->index(['email', 'team_id']);
+});
+```
+
+## Columns
+
+### `id` (Primary Key)
+- **Type**: BIGINT UNSIGNED
+- **Description**: Unique identifier for the invitation
+- **Auto-increment**: Yes
+
+### `team_id`
+- **Type**: BIGINT UNSIGNED
+- **Description**: Foreign key to teams table
+- **Required**: Yes
+- **Constraints**:
+  - Foreign key to `teams.id`
+  - Cascade on delete
+
+### `email`
+- **Type**: VARCHAR(255)
+- **Description**: Email address of the invitee
+- **Required**: Yes
+- **Example**: "john@example.com"
+
+### `role`
+- **Type**: VARCHAR(255)
+- **Description**: Role to assign when invitation is accepted
+- **Required**: No
+- **Example**: "admin", "editor", "viewer"
+
+### `token`
+- **Type**: VARCHAR(64)
+- **Description**: Unique secure token for the invitation link
+- **Required**: Yes
+- **Unique**: Yes
+- **Generated**: Using `Str::random(64)`
+
+### `expires_at`
+- **Type**: TIMESTAMP
+- **Description**: When the invitation expires
+- **Required**: Yes
+- **Default**: 7 days from creation
+- **Example**: `now()->addDays(7)`
+
+### `accepted_at`
+- **Type**: TIMESTAMP
+- **Description**: When the invitation was accepted
+- **Required**: No
+- **Null**: Indicates pending invitation
+
+### `created_at` / `updated_at`
+- **Type**: TIMESTAMP
+- **Description**: Laravel timestamps
+- **Automatically managed**: Yes
+
+## Indexes
+
+### Composite Index
+```php
+$table->index(['email', 'team_id']);
+```
+- Faster lookups when checking existing invitations
+- Used for validating duplicate invitations
+
+### Unique Token Index
+```php
+$table->string('token', 64)->unique();
+```
+- Ensures each invitation has a unique URL
+- Prevents token collisions
+
+## Usage Examples
+
+### Creating an Invitation
+
+```php
+use App\Models\TeamInvitation;
+use Illuminate\Support\Str;
+
+$invitation = TeamInvitation::create([
+    'team_id' => 1,
+    'email' => 'newmember@example.com',
+    'role' => 'editor',
+    'token' => Str::random(64),
+    'expires_at' => now()->addDays(7),
+]);
+```
+
+### Finding an Invitation
+
+```php
+// By token
+$invitation = TeamInvitation::where('token', $token)->firstOrFail();
+
+// Pending invitations only
+$pending = TeamInvitation::whereNull('accepted_at')
+    ->where('expires_at', '>', now())
+    ->get();
+
+// For specific team
+$teamInvitations = TeamInvitation::where('team_id', $teamId)->get();
+
+// For specific email
+$userInvitations = TeamInvitation::where('email', $email)
+    ->whereNull('accepted_at')
+    ->get();
+```
+
+### Accepting an Invitation
+
+```php
+$invitation = TeamInvitation::where('token', $token)
+    ->whereNull('accepted_at')
+    ->firstOrFail();
+
+if (!$invitation->isExpired()) {
+    $invitation->update(['accepted_at' => now()]);
+
+    // Add user to team
+    $team->users()->attach($user->id);
+}
+```
+
+### Checking Invitation Status
+
+```php
+// Check if expired
+if ($invitation->expires_at->isPast()) {
+    // Invitation expired
+}
+
+// Check if accepted
+if ($invitation->accepted_at !== null) {
+    // Already accepted
+}
+
+// Using model methods
+if ($invitation->isExpired()) {
+    // Expired
+}
+
+if ($invitation->isAccepted()) {
+    // Accepted
+}
+```
+
+### Resending an Invitation
+
+```php
+$invitation = TeamInvitation::find(1);
+
+// Extend expiration
+$invitation->update([
+    'expires_at' => now()->addDays(7),
+]);
+
+// Resend email
+Mail::to($invitation->email)->send(new TeamInvitationMail($invitation));
+```
+
+## Query Scopes
+
+Add helpful scopes to the TeamInvitation model:
+
+```php
+// In TeamInvitation model
+public function scopePending($query)
+{
+    return $query->whereNull('accepted_at')
+        ->where('expires_at', '>', now());
+}
+
+public function scopeExpired($query)
+{
+    return $query->whereNull('accepted_at')
+        ->where('expires_at', '<=', now());
+}
+
+public function scopeAccepted($query)
+{
+    return $query->whereNotNull('accepted_at');
+}
+
+public function scopeForTeam($query, $teamId)
+{
+    return $query->where('team_id', $teamId);
+}
+```
+
+### Usage
+
+```php
+// Get all pending invitations for a team
+$pending = TeamInvitation::pending()->forTeam($teamId)->get();
+
+// Get expired invitations
+$expired = TeamInvitation::expired()->get();
+
+// Get accepted invitations
+$accepted = TeamInvitation::accepted()->forTeam($teamId)->get();
+```
+
+## Cascade Behavior
+
+### Team Deleted
+All invitations for that team are automatically deleted:
+
+```php
+$team->delete(); // All invitations removed
+```
+
+## Security Considerations
+
+### Token Generation
+Always use cryptographically secure random tokens:
+
+```php
+use Illuminate\Support\Str;
+
+$token = Str::random(64); // Uses random_bytes() internally
+```
+
+### Token Length
+64 characters provides sufficient entropy to prevent brute-force attacks.
+
+### Expiration
+Always set an expiration date to limit invitation validity:
+
+```php
+'expires_at' => now()->addDays(7), // Default: 7 days
+```
+
+### One-Time Use
+Only find invitations that haven't been accepted:
+
+```php
+TeamInvitation::where('token', $token)
+    ->whereNull('accepted_at') // Not yet accepted
+    ->firstOrFail();
+```
+
+## Cleaning Up Old Invitations
+
+### Manual Cleanup
+
+```php
+// Delete expired invitations
+TeamInvitation::where('expires_at', '<', now())
+    ->whereNull('accepted_at')
+    ->delete();
+
+// Delete accepted invitations older than 30 days
+TeamInvitation::whereNotNull('accepted_at')
+    ->where('accepted_at', '<', now()->subDays(30))
+    ->delete();
+```
+
+### Scheduled Cleanup
+
+Create an Artisan command:
+
+```php
+// app/Console/Commands/CleanExpiredInvitations.php
+<?php
+
+namespace App\Console\Commands;
+
+use App\Models\TeamInvitation;
+use Illuminate\Console\Command;
+
+class CleanExpiredInvitations extends Command
+{
+    protected $signature = 'invitations:clean';
+    protected $description = 'Delete expired team invitations';
+
+    public function handle(): void
+    {
+        $count = TeamInvitation::where('expires_at', '<', now())
+            ->whereNull('accepted_at')
+            ->delete();
+
+        $this->info("Deleted {$count} expired invitations.");
+    }
+}
+```
+
+Schedule it:
+
+```php
+// routes/console.php
+use Illuminate\Support\Facades\Schedule;
+
+Schedule::command('invitations:clean')->daily();
+```
+
+## Testing
+
+```php
+use App\Models\TeamInvitation;
+use App\Models\Team;
+
+test('invitation can be created', function () {
+    $team = Team::factory()->create();
+
+    $invitation = TeamInvitation::create([
+        'team_id' => $team->id,
+        'email' => 'test@example.com',
+        'role' => 'editor',
+        'token' => Str::random(64),
+        'expires_at' => now()->addDays(7),
+    ]);
+
+    expect($invitation->exists)->toBeTrue();
+    expect($invitation->team_id)->toBe($team->id);
+});
+
+test('expired invitations are detected', function () {
+    $invitation = TeamInvitation::factory()->create([
+        'expires_at' => now()->subDay(),
+    ]);
+
+    expect($invitation->isExpired())->toBeTrue();
+});
+
+test('invitation can be accepted', function () {
+    $invitation = TeamInvitation::factory()->create();
+
+    expect($invitation->isAccepted())->toBeFalse();
+
+    $invitation->update(['accepted_at' => now()]);
+
+    expect($invitation->fresh()->isAccepted())->toBeTrue();
+});
+
+test('token is unique', function () {
+    $token = Str::random(64);
+
+    TeamInvitation::factory()->create(['token' => $token]);
+
+    expect(fn () => TeamInvitation::factory()->create(['token' => $token]))
+        ->toThrow(\Illuminate\Database\QueryException::class);
+});
+```
+
+## Next Steps
+
+- [Creating Tenant-Scoped Tables](/multi-tenancy/database/tenant-scoped-tables) - Add your own tables
+- [Invitation Flow](/multi-tenancy/invitations/invitation-flow) - Complete invitation process

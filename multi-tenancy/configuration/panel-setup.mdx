@@ -1,0 +1,244 @@
+---
+title: Panel Setup
+description: Configuring Filament panels for multi-tenancy
+icon: 'sliders'
+---
+
+## Overview
+
+Larafast Multi-Tenancy uses Filament v4's native multi-tenancy features configured in the panel providers. You'll have two panels: the App panel (tenant-scoped) and the Admin panel (global).
+
+## App Panel Configuration
+
+The main application panel is where multi-tenancy is configured for end-users.
+
+**Location:** `app/Providers/Filament/AppPanelProvider.php`
+
+### Basic Tenant Setup
+
+```php
+use App\Models\Team;
+use Filament\Panel;
+
+public function panel(Panel $panel): Panel
+{
+    return $panel
+        ->id('app')
+        ->path('app')
+        ->tenant(Team::class, ownershipRelationship: 'teams')
+        // ... other configuration
+}
+```
+
+### Configuration Options
+
+#### 1. Tenant Model
+
+```php
+->tenant(Team::class, ownershipRelationship: 'teams')
+```
+
+- **`Team::class`** - The model that represents your tenants
+- **`ownershipRelationship`** - Must match a method on User model that returns teams
+
+The User model must have a `teams()` method:
+
+```php
+public function teams(): BelongsToMany
+{
+    return $this->belongsToMany(Team::class);
+}
+```
+
+#### 2. Tenant Registration
+
+```php
+->tenantRegistration(RegisterTeam::class)
+```
+
+- Enables users to create new teams
+- Custom page for team creation
+- Users prompted to create team on first login
+- Remove this line to disable team creation
+
+#### 3. Tenant Profile
+
+```php
+->tenantProfile(EditTeamProfile::class)
+```
+
+- Custom page for editing team settings
+- Accessible from user menu dropdown
+- Can customize to show team-specific settings
+
+#### 4. Tenant Middleware
+
+```php
+->tenantMiddleware([
+    UpdateUserCurrentTeam::class,
+], isPersistent: true)
+```
+
+- **`UpdateUserCurrentTeam`** - Updates `user.current_team_id` when switching
+- **`isPersistent: true`** - Middleware runs on every tenant-scoped request
+- Add your custom middleware here
+
+#### 5. Tenant Billing
+
+```php
+->tenantBillingProvider(new StripeBillingProvider())
+->requiresTenantSubscription(false)
+```
+
+- **`tenantBillingProvider`** - Integrates with Stripe for subscriptions
+- **`requiresTenantSubscription(false)`** - Teams can be created without subscription
+- Set to `true` to require subscription before access
+
+### Complete Example
+
+```php
+<?php
+
+namespace App\Providers\Filament;
+
+use App\Filament\App\Pages\Tenancy\EditTeamProfile;
+use App\Filament\App\Pages\Tenancy\RegisterTeam;
+use App\Http\Middleware\UpdateUserCurrentTeam;
+use App\Models\Team;
+use Filament\Http\Middleware\Authenticate;
+use Filament\Http\Middleware\DisableBladeIconComponents;
+use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Panel;
+use Filament\PanelProvider;
+use Filament\Support\Colors\Color;
+
+class AppPanelProvider extends PanelProvider
+{
+    public function panel(Panel $panel): Panel
+    {
+        return $panel
+            ->default()
+            ->id('app')
+            ->path('app')
+            ->login()
+            ->registration()
+            ->passwordReset()
+            ->emailVerification()
+            ->profile()
+            ->colors([
+                'primary' => Color::Amber,
+            ])
+            ->discoverResources(in: app_path('Filament/App/Resources'), for: 'App\\Filament\\App\\Resources')
+            ->discoverPages(in: app_path('Filament/App/Pages'), for: 'App\\Filament\\App\\Pages')
+            ->discoverWidgets(in: app_path('Filament/App/Widgets'), for: 'App\\Filament\\App\\Widgets')
+            ->middleware([
+                // ... standard middleware
+            ])
+            ->authMiddleware([
+                Authenticate::class,
+            ])
+            // Multi-tenancy configuration
+            ->tenant(Team::class, ownershipRelationship: 'teams')
+            ->tenantRegistration(RegisterTeam::class)
+            ->tenantProfile(EditTeamProfile::class)
+            ->tenantMiddleware([
+                UpdateUserCurrentTeam::class,
+            ], isPersistent: true)
+            ->tenantBillingProvider(new \Filament\Billing\Providers\StripeBillingProvider())
+            ->requiresTenantSubscription(false);
+    }
+}
+```
+
+## Admin Panel Configuration
+
+The admin panel does NOT have multi-tenancy. Administrators can see and manage all teams.
+
+**Location:** `app/Providers/Filament/AdminPanelProvider.php`
+
+```php
+<?php
+
+namespace App\Providers\Filament;
+
+use Filament\Http\Middleware\Authenticate;
+use Filament\Panel;
+use Filament\PanelProvider;
+use Filament\Support\Colors\Color;
+
+class AdminPanelProvider extends PanelProvider
+{
+    public function panel(Panel $panel): Panel
+    {
+        return $panel
+            ->id('admin')
+            ->path('admin')
+            ->login()
+            ->colors([
+                'primary' => Color::Amber,
+            ])
+            ->discoverResources(in: app_path('Filament/Admin/Resources'), for: 'App\\Filament\\Admin\\Resources')
+            ->discoverPages(in: app_path('Filament/Admin/Pages'), for: 'App\\Filament\\Admin\\Pages')
+            ->discoverWidgets(in: app_path('Filament/Admin/Widgets'), for: 'App\\Filament\\Admin\\Widgets')
+            ->middleware([
+                // ... standard middleware
+            ])
+            ->authMiddleware([
+                Authenticate::class,
+            ]);
+            // No tenant configuration
+    }
+}
+```
+
+### Key Differences
+
+| Feature | App Panel | Admin Panel |
+|---------|-----------|-------------|
+| Path | `/app` | `/admin` |
+| Tenancy | Yes (Team-scoped) | No (Global) |
+| Data Visibility | Current team only | All teams |
+| Team Switcher | Yes | No |
+| Access Control | All authenticated users | Admin role required |
+
+## Panel URLs
+
+### App Panel URLs
+- Dashboard: `/app`
+- With tenant: `/app/teams/1/dashboard`
+- Resources: `/app/teams/1/projects`
+
+### Admin Panel URLs
+- Dashboard: `/admin`
+- Resources: `/admin/teams`, `/admin/users`
+
+## Customizing Tenant URLs
+
+By default, tenant IDs are used in URLs. You can use slugs instead:
+
+### Add Slug Column
+
+```php
+Schema::table('teams', function (Blueprint $table) {
+    $table->string('slug')->unique()->after('name');
+});
+```
+
+### Update Team Model
+
+```php
+public function getRouteKeyName()
+{
+    return 'slug';
+}
+```
+
+### URLs Will Change
+- Before: `/app/teams/1/dashboard`
+- After: `/app/teams/acme-corporation/dashboard`
+
+## Next Steps
+
+- [User Model Configuration](/multi-tenancy/configuration/user-model) - Required interfaces
+- [Team Model Configuration](/multi-tenancy/configuration/team-model) - Team model setup
+- [Middleware](/multi-tenancy/configuration/middleware) - Custom tenant middleware

@@ -1,0 +1,101 @@
+---
+title: Creating Tenant Resources
+description: Building Filament resources scoped to teams
+icon: 'rectangle-group'
+---
+
+## Overview
+
+Tenant-scoped resources automatically filter data by the current team. All queries are automatically scoped, and new records get `team_id` set automatically.
+
+## Step 1: Create Model with Global Scope
+
+```php
+<?php
+
+namespace App\Models;
+
+use Filament\Facades\Filament;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+
+class Project extends Model
+{
+    protected $fillable = ['team_id', 'name', 'description'];
+
+    protected static function booted(): void
+    {
+        static::addGlobalScope('team', function (Builder $builder) {
+            if (Filament::getTenant()) {
+                $builder->where('team_id', Filament::getTenant()->id);
+            }
+        });
+
+        static::creating(function (Project $project) {
+            if (!$project->team_id && Filament::getTenant()) {
+                $project->team_id = Filament::getTenant()->id;
+            }
+        });
+    }
+
+    public function team()
+    {
+        return $this->belongsTo(Team::class);
+    }
+}
+```
+
+## Step 2: Create Filament Resource
+
+```bash
+php artisan make:filament-resource Project --generate --panel=app
+```
+
+```php
+<?php
+
+namespace App\Filament\App\Resources;
+
+use App\Models\Project;
+use Filament\Forms;
+use Filament\Resources\Resource;
+use Filament\Tables;
+
+class ProjectResource extends Resource
+{
+    protected static ?string $model = Project::class;
+
+    public static function form(Forms\Form $form): Forms\Form
+    {
+        return $form->schema([
+            Forms\Components\TextInput::make('name')->required(),
+            Forms\Components\Textarea::make('description'),
+        ]);
+    }
+
+    public static function table(Tables\Table $table): Tables\Table
+    {
+        return $table
+            ->columns([
+                Tables\Columns\TextColumn::make('name')->searchable(),
+                Tables\Columns\TextColumn::make('created_at')->dateTime(),
+            ]);
+    }
+}
+```
+
+## Automatic Scoping
+
+All queries are automatically scoped:
+
+```php
+// Only returns current team's projects
+Project::all();
+Project::where('status', 'active')->get();
+Project::latest()->limit(10)->get();
+```
+
+## Next Steps
+
+- [Models & Scoping](/multi-tenancy/resources/models-scoping) - Global scopes explained
+- [Practical Examples](/multi-tenancy/examples/project-management) - Complete examples

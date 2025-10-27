@@ -1,0 +1,402 @@
+---
+title: Creating Tenant-Scoped Tables
+description: How to add your own tenant-scoped tables and models
+icon: 'table-cells'
+---
+
+## Overview
+
+When building features in your multi-tenant application, you'll need to create tables that are automatically scoped to the current team. This guide shows you the pattern for creating tenant-aware tables.
+
+## Basic Pattern
+
+Every tenant-scoped table should include a `team_id` foreign key that references the `teams` table.
+
+### Step 1: Create Migration
+
+```bash
+php artisan make:migration create_projects_table
+```
+
+```php
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('projects', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('team_id')->constrained()->cascadeOnDelete();
+            $table->string('name');
+            $table->text('description')->nullable();
+            $table->timestamps();
+
+            // Indexes for better query performance
+            $table->index(['team_id', 'created_at']);
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('projects');
+    }
+};
+```
+
+### Key Elements
+
+1. **Foreign Key**: `$table->foreignId('team_id')`
+2. **Constraint**: `->constrained()` creates the foreign key relationship
+3. **Cascade Delete**: `->cascadeOnDelete()` ensures data cleanup
+4. **Index**: `$table->index(['team_id', 'created_at'])` for performance
+
+## Step 2: Create Model with Global Scope
+
+```bash
+php artisan make:model Project
+```
+
+```php
+<?php
+
+namespace App\Models;
+
+use Filament\Facades\Filament;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class Project extends Model
+{
+    protected $fillable = [
+        'team_id',
+        'name',
+        'description',
+    ];
+
+    // Relationships
+    public function team(): BelongsTo
+    {
+        return $this->belongsTo(Team::class);
+    }
+
+    // Global scope for automatic team filtering
+    protected static function booted(): void
+    {
+        static::addGlobalScope('team', function (Builder $builder) {
+            if (Filament::getTenant()) {
+                $builder->where('team_id', Filament::getTenant()->id);
+            }
+        });
+
+        static::creating(function (Project $project) {
+            if (!$project->team_id && Filament::getTenant()) {
+                $project->team_id = Filament::getTenant()->id;
+            }
+        });
+    }
+}
+```
+
+## Understanding the Global Scope
+
+The global scope does two important things:
+
+### 1. Automatic Filtering
+All queries are automatically filtered by the current team:
+
+```php
+// Without global scope, you'd need:
+$projects = Project::where('team_id', Filament::getTenant()->id)->get();
+
+// With global scope, this is automatic:
+$projects = Project::all(); // Only current team's projects
+```
+
+### 2. Automatic Assignment
+New records get `team_id` set automatically:
+
+```php
+// You don't need to manually set team_id
+$project = Project::create([
+    'name' => 'New Project',
+    'description' => 'Description',
+    // team_id is set automatically
+]);
+```
+
+## Common Patterns
+
+### Pattern 1: Simple Tenant-Scoped Table
+
+For straightforward tables that belong to a team:
+
+```php
+Schema::create('tasks', function (Blueprint $table) {
+    $table->id();
+    $table->foreignId('team_id')->constrained()->cascadeOnDelete();
+    $table->string('title');
+    $table->boolean('completed')->default(false);
+    $table->timestamps();
+
+    $table->index(['team_id', 'completed']);
+});
+```
+
+### Pattern 2: Nested Tenant-Scoped Table
+
+For tables that belong to other tenant-scoped models:
+
+```php
+Schema::create('comments', function (Blueprint $table) {
+    $table->id();
+    $table->foreignId('project_id')->constrained()->cascadeOnDelete();
+    $table->foreignId('user_id')->constrained();
+    $table->text('content');
+    $table->timestamps();
+
+    $table->index('project_id');
+});
+```
+
+Model with nested scope:
+
+```php
+class Comment extends Model
+{
+    protected static function booted(): void
+    {
+        // Scope through parent relationship
+        static::addGlobalScope('team', function (Builder $builder) {
+            if (Filament::getTenant()) {
+                $builder->whereHas('project', function ($query) {
+                    $query->where('team_id', Filament::getTenant()->id);
+                });
+            }
+        });
+    }
+
+    public function project(): BelongsTo
+    {
+        return $this->belongsTo(Project::class);
+    }
+}
+```
+
+### Pattern 3: Soft Deletes
+
+For tables that need soft deletion:
+
+```php
+Schema::create('customers', function (Blueprint $table) {
+    $table->id();
+    $table->foreignId('team_id')->constrained()->cascadeOnDelete();
+    $table->string('name');
+    $table->string('email');
+    $table->timestamps();
+    $table->softDeletes();
+
+    $table->index(['team_id', 'deleted_at']);
+});
+```
+
+```php
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+class Customer extends Model
+{
+    use SoftDeletes;
+
+    protected static function booted(): void
+    {
+        static::addGlobalScope('team', function (Builder $builder) {
+            if (Filament::getTenant()) {
+                $builder->where('team_id', Filament::getTenant()->id);
+            }
+        });
+
+        static::creating(function (Customer $customer) {
+            if (!$customer->team_id && Filament::getTenant()) {
+                $customer->team_id = Filament::getTenant()->id;
+            }
+        });
+    }
+}
+```
+
+### Pattern 4: Polymorphic Relationships
+
+For tables with polymorphic relationships:
+
+```php
+Schema::create('attachments', function (Blueprint $table) {
+    $table->id();
+    $table->foreignId('team_id')->constrained()->cascadeOnDelete();
+    $table->morphs('attachable'); // Creates attachable_id and attachable_type
+    $table->string('filename');
+    $table->string('path');
+    $table->timestamps();
+
+    $table->index(['team_id', 'attachable_type', 'attachable_id']);
+});
+```
+
+```php
+class Attachment extends Model
+{
+    protected static function booted(): void
+    {
+        static::addGlobalScope('team', function (Builder $builder) {
+            if (Filament::getTenant()) {
+                $builder->where('team_id', Filament::getTenant()->id);
+            }
+        });
+
+        static::creating(function (Attachment $attachment) {
+            if (!$attachment->team_id && Filament::getTenant()) {
+                $attachment->team_id = Filament::getTenant()->id;
+            }
+        });
+    }
+
+    public function attachable()
+    {
+        return $this->morphTo();
+    }
+}
+```
+
+## Performance Optimization
+
+### Adding Composite Indexes
+
+Always add indexes on `team_id` combined with frequently queried columns:
+
+```php
+// Good indexes
+$table->index(['team_id', 'status']);
+$table->index(['team_id', 'created_at']);
+$table->index(['team_id', 'user_id']);
+
+// For searches
+$table->index(['team_id', 'name']);
+$table->index(['team_id', 'email']);
+```
+
+### Query Optimization
+
+Use eager loading to avoid N+1 queries:
+
+```php
+// Bad - N+1 queries
+$projects = Project::all();
+foreach ($projects as $project) {
+    echo $project->team->name; // Extra query per project
+}
+
+// Good - Single query
+$projects = Project::with('team')->get();
+foreach ($projects as $project) {
+    echo $project->team->name;
+}
+```
+
+## Bypassing Global Scope
+
+Sometimes you need to query without the team scope (e.g., admin panel):
+
+```php
+// Without team scope
+$allProjects = Project::withoutGlobalScope('team')->get();
+
+// Without all global scopes
+$everything = Project::withoutGlobalScopes()->get();
+
+// Temporarily disable for a closure
+Project::withoutGlobalScope('team', function () {
+    // Queries here ignore team scope
+    return Project::count(); // All projects across all teams
+});
+```
+
+## Conditional Scoping
+
+Only apply scope in specific contexts:
+
+```php
+protected static function booted(): void
+{
+    static::addGlobalScope('team', function (Builder $builder) {
+        // Only in app panel, not admin panel
+        if (Filament::getCurrentPanel()?->getId() === 'app' && Filament::getTenant()) {
+            $builder->where('team_id', Filament::getTenant()->id);
+        }
+    });
+}
+```
+
+## Testing
+
+```php
+use App\Models\Project;
+use App\Models\Team;
+use Filament\Facades\Filament;
+
+test('projects are scoped to current team', function () {
+    $teamA = Team::factory()->create();
+    $teamB = Team::factory()->create();
+
+    $projectA = Project::factory()->create(['team_id' => $teamA->id]);
+    $projectB = Project::factory()->create(['team_id' => $teamB->id]);
+
+    Filament::setTenant($teamA);
+
+    expect(Project::count())->toBe(1);
+    expect(Project::first()->id)->toBe($projectA->id);
+});
+
+test('new projects get team_id automatically', function () {
+    $team = Team::factory()->create();
+
+    Filament::setTenant($team);
+
+    $project = Project::create(['name' => 'Test Project']);
+
+    expect($project->team_id)->toBe($team->id);
+});
+
+test('cannot access other teams projects', function () {
+    $teamA = Team::factory()->create();
+    $teamB = Team::factory()->create();
+
+    $projectB = Project::factory()->create(['team_id' => $teamB->id]);
+
+    Filament::setTenant($teamA);
+
+    expect(Project::find($projectB->id))->toBeNull();
+});
+```
+
+## Checklist
+
+When creating a tenant-scoped table, make sure you:
+
+- [ ] Add `team_id` foreign key column
+- [ ] Use `constrained()->cascadeOnDelete()`
+- [ ] Add indexes on `[team_id, ...]` combinations
+- [ ] Include `team_id` in model's `$fillable`
+- [ ] Add global scope in `booted()` method
+- [ ] Set `team_id` automatically in `creating` event
+- [ ] Add `team()` relationship method
+- [ ] Test the scoping behavior
+- [ ] Test automatic `team_id` assignment
+
+## Next Steps
+
+- [Working with Models](/multi-tenancy/resources/models) - Model best practices
+- [Filament Resources](/multi-tenancy/resources/filament-resources) - Creating UI for your tables

@@ -1,0 +1,148 @@
+---
+title: Start Here for Multi-Tenancy
+description: Larafast Multi-Tenancy Documentation - Build SaaS applications with team-based multi-tenancy
+icon: 'arrow-right'
+---
+
+Welcome to the **Larafast Multi-Tenancy Documentation**
+
+**Larafast Multi-Tenancy** is built on Laravel Framework v12.x, Filament v4, Livewire 3, and TailwindCSS v4. It provides a complete team-based multi-tenancy system perfect for building modern SaaS applications.
+
+<Tip>
+    Haven't gotten Larafast Multi-Tenancy yet? Check here: [https://larafast.com](https://larafast.com)
+</Tip>
+
+## What is Multi-Tenancy in Laravel?
+
+Multi-tenancy is an architectural pattern where a single instance of your application serves multiple customers (tenants). Each tenant's data is isolated and invisible to other tenants, providing security and privacy while maintaining efficiency by sharing the same codebase and infrastructure.
+
+In **Larafast Multi-Tenancy**, we implement **team-based multi-tenancy** using Filament v4's native multi-tenancy features. This means:
+
+- **Shared Database Architecture**: All tenants share the same database, with logical data isolation through team associations
+- **Team-Based Isolation**: Each "team" acts as a tenant boundary
+- **User Flexibility**: Users can belong to multiple teams and switch between them seamlessly
+- **Ownership & Membership**: Teams have owners and can have multiple members with different roles
+
+### Multi-Tenancy Use Cases
+
+Multi-tenancy is ideal for SaaS applications where you need to:
+
+#### 1. **Project Management Tools**
+- Each company/organization has its own workspace (team)
+- Teams manage their own projects, tasks, and team members
+- Users can participate in multiple organization workspaces
+- Examples: Asana, Trello, Monday.com
+
+#### 2. **Collaborative Software**
+- Design tools where agencies manage multiple client projects
+- Each client gets their own isolated workspace
+- Team members collaborate within shared spaces
+- Examples: Figma teams, Notion workspaces
+
+#### 3. **Business Management Systems**
+- Accounting software for multiple businesses
+- Each business (tenant) has its own financial data
+- Accountants can manage multiple client businesses
+- Examples: QuickBooks, Xero
+
+#### 4. **E-commerce Platforms**
+- Multi-vendor marketplaces
+- Each vendor (tenant) manages their own products and orders
+- Platform owners oversee all vendors
+- Examples: Shopify stores, multi-vendor platforms
+
+#### 5. **Educational Platforms**
+- Different schools or organizations use the same platform
+- Each institution manages their own students and courses
+- Teachers can work across multiple institutions
+- Examples: Learning management systems
+
+#### 6. **Marketing & Agency Tools**
+- Agencies manage multiple client accounts
+- Each client has isolated campaigns and analytics
+- Team members collaborate on client projects
+- Examples: Social media management tools, CRM systems
+
+## Installation
+
+To install the project you need to open your terminal and type these commands
+
+<Warning>
+    If you have installed the project using the Larafast Installer, you can skip these steps.
+</Warning>
+
+### Clone repo and install composer
+
+```bash
+git clone git@github.com:karakhanyans-tools/larafast-multitenancy.git [YOUR_PROJECT_NAME]
+cd [YOUR_PROJECT_NAME]
+composer install
+```
+
+### Create .env file
+
+```bash
+cp .env.example .env
+```
+
+### Create APP_KEY
+
+```bash
+php artisan key:generate
+```
+
+### Run migrations
+
+<Tip>
+    By default DB_CONNECTION is set to SQLite, feel free to change it to MySQL or any preferred DB.
+</Tip>
+
+To use MySQL as a database, update the .env file with the new database credentials.
+
+```bash .env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=your_db_name
+DB_USERNAME=root
+DB_PASSWORD=
+```
+
+```bash
+php artisan migrate
+```
+
+### Install NPM and Run
+
+```bash
+npm install
+npm run dev
+```
+
+### Run Local Server
+
+Laravel comes with a handy artisan serve command to run a local server. Feel free to use Herd, Valet or any other local server management tools.
+
+```bash
+php artisan serve
+```
+
+That's it. Visit [http://127.0.0.1:8000/](http://127.0.0.1:8000/) and see your website!
+
+<Warning>
+    Don't forget to remove the starter kit's git configs. To do so: `rm -rf .git` - to init fresh git folder later `git remote remove origin`
+</Warning>
+
+## Quick Start Guide
+
+Once installed, here's how to get started with multi-tenancy:
+
+1. **Register a User** - Create your first user account
+2. **Create a Team** - Upon first login, you'll be prompted to create your first team
+3. **Invite Members** - Invite team members via email from the Users section
+4. **Switch Teams** - Use the tenant switcher in the top navigation to change between teams
+5. **Manage Team Settings** - Access team profile settings from the user menu
+
+<Tip>
+    Check out the rest of the documentation to learn about team management, invitations, subscriptions, and more advanced features!
+</Tip>

@@ -1,0 +1,370 @@
+---
+title: Plans Configuration
+description: Customize your pricing plans and features
+icon: 'list-check'
+---
+
+## Overview
+
+Your pricing plans are configured in a simple PHP array that's easy to customize. This guide shows you exactly how to modify plans, add features, and display them beautifully in your application.
+
+## Plans Configuration File
+
+**Location:** `lang/en/prices.php`
+
+This file contains all your pricing plans for different payment providers (Stripe, LemonSqueezy, Paddle).
+
+## Plan Structure
+
+Each plan is an array with these fields:
+
+```php
+[
+    'name' => 'Starter',              // Plan display name
+    'slug' => 'price_ABC123',         // Stripe Price ID
+    'description' => 'For growing teams',  // Short description
+    'price' => '29.99',               // Monthly price
+    'interval' => 'month',            // Billing interval
+    'features' => [...],              // List of features
+    'bestseller' => true,             // Optional: Show as popular
+]
+```
+
+## Complete Example
+
+```php
+<?php
+
+return [
+    'stripe' => [
+        // Free Plan
+        [
+            'name' => 'Free',
+            'slug' => 'free',
+            'description' => 'Perfect for individuals and small teams getting started',
+            'price' => 0,
+            'interval' => 'month',
+            'features' => [
+                'Up to 3 projects',
+                '5 team members maximum',
+                'Basic collaboration tools',
+                '1GB file storage',
+                'Email support',
+                'Mobile app access',
+            ],
+        ],
+
+        // Starter Plan (Most Popular)
+        [
+            'name' => 'Starter',
+            'slug' => 'price_1234567890starter',  // Your Stripe Price ID
+            'description' => 'Ideal for growing teams that need more power',
+            'price' => '29.99',
+            'interval' => 'month',
+            'features' => [
+                'Everything in Free',
+                'Unlimited projects',
+                'Unlimited team members',
+                'Advanced collaboration',
+                'Priority email support',
+                '50GB file storage',
+                'Custom integrations',
+                'Advanced analytics',
+            ],
+            'bestseller' => true,  // Shows "Most Popular" badge
+        ],
+
+        // Pro Plan
+        [
+            'name' => 'Pro',
+            'slug' => 'price_1234567890pro',  // Your Stripe Price ID
+            'description' => 'For large organizations with advanced needs',
+            'price' => '99.99',
+            'interval' => 'month',
+            'features' => [
+                'Everything in Starter',
+                'Dedicated account manager',
+                '24/7 phone support',
+                '500GB file storage',
+                'Custom onboarding',
+                'SLA guarantee (99.9%)',
+                'Advanced security features',
+                'API access',
+                'White-label options',
+            ],
+        ],
+    ],
+];
+```
+
+## Field Explanations
+
+### Required Fields
+
+#### `name` (string)
+The display name of the plan shown to users.
+
+**Examples:**
+- "Free"
+- "Starter"
+- "Professional"
+- "Enterprise"
+
+#### `slug` (string)
+- **For Free plans**: Just use `'free'`
+- **For Paid plans**: Must match your Stripe Price ID exactly
+- **Format**: `price_1ABC...xyz` from Stripe dashboard
+- **Important**: This is how the system knows which Stripe price to charge!
+
+#### `description` (string)
+A short description that appears under the plan name.
+
+**Tips:**
+- Keep it under 60 characters
+- Focus on who the plan is for
+- Be clear and benefit-focused
+
+**Examples:**
+- "Perfect for individuals"
+- "For growing teams"
+- "Enterprise-grade features"
+
+#### `price` (number or string)
+The monthly price in your currency.
+
+**Examples:**
+- `0` for free plans
+- `'29.99'` for $29.99/month
+- `'99'` for $99/month
+
+#### `interval` (string)
+The billing frequency.
+
+**Options:**
+- `'month'` - Monthly billing
+- `'year'` - Annual billing
+
+**Pro tip:** Offer annual plans at a discount:
+```php
+[
+    'name' => 'Starter Annual',
+    'slug' => 'price_annual_starter',
+    'price' => '299.99',  // ~$25/month, saves $60/year
+    'interval' => 'year',
+],
+```
+
+#### `features` (array)
+List of features included in this plan.
+
+**Best Practices:**
+- Start with "Everything in [Previous Plan]" for higher tiers
+- Lead with most valuable features
+- Use clear, benefit-focused language
+- Keep each feature to one line
+- Use action verbs where possible
+
+### Optional Fields
+
+#### `bestseller` (boolean)
+Shows a "Most Popular" or "Recommended" badge on the plan card.
+
+```php
+'bestseller' => true,
+```
+
+Only set this on ONE plan (usually your middle tier).
+
+## Customizing Plan Display
+
+### Adding Annual Plans
+
+Create discounted annual versions of your plans:
+
+```php
+[
+    'name' => 'Starter',
+    'slug' => 'price_monthly_starter',
+    'price' => '29.99',
+    'interval' => 'month',
+    // ... features
+],
+[
+    'name' => 'Starter Annual',
+    'slug' => 'price_annual_starter',
+    'price' => '299.99',  // 2 months free
+    'interval' => 'year',
+    // ... same features
+],
+```
+
+### Adding Addon/Per-Seat Pricing
+
+For usage-based or per-seat pricing:
+
+```php
+[
+    'name' => 'Pro',
+    'slug' => 'price_pro',
+    'price' => '49.99',
+    'interval' => 'month',
+    'features' => [
+        'Base: 10 team members',
+        '$5 per additional member',
+        // ... other features
+    ],
+],
+```
+
+Then implement per-seat billing in Stripe with metered pricing.
+
+### Custom Plan Properties
+
+Add any custom properties you need:
+
+```php
+[
+    'name' => 'Enterprise',
+    'slug' => 'price_enterprise',
+    'price' => 'Custom',  // Can be string for "Contact us"
+    'interval' => 'month',
+    'features' => [...],
+    'contactSales' => true,  // Custom property
+    'minSeats' => 50,        // Custom property
+    'customOnboarding' => true,  // Custom property
+],
+```
+
+Then handle these in your Livewire component or Blade view.
+
+## Feature Writing Tips
+
+### Good Feature Examples
+
+✅ **Clear and Benefit-Focused:**
+- "Unlimited projects"
+- "Priority support (< 4hr response)"
+- "50GB file storage"
+- "Advanced analytics dashboard"
+- "SSO / SAML authentication"
+
+❌ **Vague or Technical:**
+- "More stuff"
+- "Better features"
+- "API endpoints"
+- "Enterprise capabilities"
+
+### Using Icons with Features
+
+In your Blade view, you can add icons:
+
+```blade
+@foreach ($plan['features'] as $feature)
+    <div class="flex items-center gap-2">
+        <svg><!-- checkmark icon --></svg>
+        <span>{{ $feature }}</span>
+    </div>
+@endforeach
+```
+
+## Displaying Plans
+
+The plans are displayed via a Livewire component:
+
+**Component:** `app/Livewire/Plans.php`
+
+```php
+public function render()
+{
+    $plans = __('prices.stripe');  // Gets your plans
+    return view('livewire.plans', ['plans' => $plans]);
+}
+```
+
+**View:** `resources/views/livewire/plans.blade.php`
+
+You can customize the view to match your design.
+
+## Multiple Billing Intervals
+
+To let users toggle between monthly and annual:
+
+### 1. Add Both Intervals to Config
+
+```php
+'stripe' => [
+    // Monthly plans
+    ['name' => 'Starter', 'slug' => 'price_monthly', 'price' => '29.99', 'interval' => 'month'],
+    // Annual plans
+    ['name' => 'Starter', 'slug' => 'price_annual', 'price' => '299.99', 'interval' => 'year'],
+],
+```
+
+### 2. Add Toggle in Livewire Component
+
+```php
+public $billingInterval = 'month';  // or 'year'
+
+public function render()
+{
+    $allPlans = __('prices.stripe');
+
+    $plans = collect($allPlans)->filter(function ($plan) {
+        return $plan['interval'] === $this->billingInterval;
+    });
+
+    return view('livewire.plans', ['plans' => $plans]);
+}
+```
+
+### 3. Add Toggle in View
+
+```blade
+<div class="flex gap-4">
+    <button wire:click="$set('billingInterval', 'month')">Monthly</button>
+    <button wire:click="$set('billingInterval', 'year')">Annual (Save 20%)</button>
+</div>
+```
+
+## Testing Your Plans
+
+1. **Update the configuration file**
+2. **Clear config cache**: `php artisan config:clear`
+3. **Visit your pricing page**: `/pricing` or wherever you display plans
+4. **Verify:**
+   - All plans display correctly
+   - Prices are formatted properly
+   - Features lists look good
+   - "Subscribe" buttons work
+
+## Best Practices
+
+### Pricing Strategy
+
+1. **Three tiers is optimal** - Free, Starter, Pro
+2. **Make middle tier "Most Popular"** - Anchors customers there
+3. **Clear differentiation** - Each tier should have obvious value jump
+4. **Price anchoring** - Show higher tier to make middle seem reasonable
+
+### Feature Organization
+
+1. **Most important first** - Lead with your best features
+2. **Cumulative value** - "Everything in Starter plus..."
+3. **Specificity** - "50GB storage" not "more storage"
+4. **Benefits over features** - "Priority support" not "dedicated queue"
+
+### Updating Plans
+
+When changing plans:
+1. Update `lang/en/prices.php`
+2. Create new prices in Stripe (don't modify existing)
+3. Update `slug` with new Price ID
+4. Clear cache: `php artisan config:clear`
+5. Test checkout flow
+6. Existing subscriptions stay on old prices (grandfathered)
+
+## Next Steps
+
+- [Stripe Setup](/multi-tenancy/pricing/stripe-setup) - Configure Stripe integration
+- [Subscription Features](/multi-tenancy/pricing/subscription-features) - Gate features by plan
+- [Billing Portal](/multi-tenancy/pricing/billing-portal) - Let customers manage subscriptions

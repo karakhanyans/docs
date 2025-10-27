@@ -27,6 +27,10 @@
   },
   "tabs": [
     {
+      "name": "Multi-Tenancy",
+      "url": "multi-tenancy"
+    },
+    {
       "name": "VILT Components",
       "url": "vilt"
     },
@@ -223,6 +227,73 @@
         "deploy/deploy-to-prod",
         "deploy/deploy-with-forge",
         "deploy/deploy-with-envoy"
+      ]
+    },
+    {
+      "group": "Get Started",
+      "pages": [
+        "multi-tenancy/intro"
+      ]
+    },
+    {
+      "group": "Database",
+      "pages": [
+        "multi-tenancy/database/overview",
+        "multi-tenancy/database/teams-table",
+        "multi-tenancy/database/team-user-table",
+        "multi-tenancy/database/invitations-table",
+        "multi-tenancy/database/tenant-scoped-tables"
+      ]
+    },
+    {
+      "group": "Configuration",
+      "pages": [
+        "multi-tenancy/configuration/panel-setup",
+        "multi-tenancy/configuration/user-model"
+      ]
+    },
+    {
+      "group": "Team Management",
+      "pages": [
+        "multi-tenancy/teams/creating-teams",
+        "multi-tenancy/teams/managing-members",
+        "multi-tenancy/teams/team-settings"
+      ]
+    },
+    {
+      "group": "Team Invitations",
+      "pages": [
+        "multi-tenancy/invitations/sending-invitations",
+        "multi-tenancy/invitations/accepting-invitations"
+      ]
+    },
+    {
+      "group": "Pricing & Subscriptions",
+      "pages": [
+        "multi-tenancy/pricing/overview",
+        "multi-tenancy/pricing/stripe-setup",
+        "multi-tenancy/pricing/plans-configuration"
+      ]
+    },
+    {
+      "group": "Settings",
+      "pages": [
+        "multi-tenancy/settings/overview",
+        "multi-tenancy/settings/general-settings",
+        "multi-tenancy/settings/social-authentication",
+        "multi-tenancy/settings/environment-management"
+      ]
+    },
+    {
+      "group": "Tenant Resources",
+      "pages": [
+        "multi-tenancy/resources/creating-resources"
+      ]
+    },
+    {
+      "group": "Examples",
+      "pages": [
+        "multi-tenancy/examples/project-management"
       ]
     }
   ],

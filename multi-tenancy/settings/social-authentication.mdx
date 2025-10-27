@@ -1,0 +1,407 @@
+---
+title: Social Authentication
+description: Configure OAuth providers for social login
+icon: 'users-gear'
+---
+
+## Overview
+
+The Social Authentication settings page allows administrators to configure **OAuth providers** for social login. Users can then sign in with their existing accounts from GitHub, Google, Twitter/X, Apple, or Facebook - no password needed!
+
+## Accessing Social Authentication Settings
+
+1. **Log in to Admin Panel** - Navigate to `/admin`
+2. **Click "Settings"** in the sidebar
+3. **Select "Social Authentication"**
+
+## How Social Login Works
+
+### User Experience
+
+1. **User clicks** "Continue with GitHub" (or other provider) on login page
+2. **Redirected** to provider (e.g., GitHub) for authorization
+3. **User approves** access to their account
+4. **Redirected back** to your app
+5. **Automatically logged in** - Account created if first time
+
+**Total time: ~10 seconds** ⚡
+
+### What Gets Stored
+
+When a user signs in via social provider:
+- ✅ **Basic profile** - Name, email, avatar
+- ✅ **Provider ID** - Their account ID on that platform
+- ✅ **OAuth token** - Encrypted access token (if needed)
+- ❌ **Password** - Not stored (they don't have one!)
+
+## Global Toggle
+
+### Use Social Authentication
+- **Field**: `AUTH_USE_SOCIAL_AUTH`
+- **Type**: Toggle (On/Off)
+- **Default**: ON
+
+**When ON:**
+- ✅ Social login buttons appear on login/registration pages
+- ✅ Users can sign in with configured providers
+
+**When OFF:**
+- ❌ All social login buttons hidden
+- ❌ Social login routes disabled
+- ✅ Only email/password login available
+
+**Use Case:** Disable temporarily if you want email-only authentication.
+
+## Supported Providers
+
+### GitHub
+
+Perfect for developer tools, technical products, and open-source projects.
+
+**Configuration:**
+- `GITHUB_CLIENT_ID` - GitHub OAuth App Client ID
+- `GITHUB_CLIENT_SECRET` - GitHub OAuth App Secret
+
+**How to Get Credentials:**
+
+1. Go to [GitHub Developer Settings](https://github.com/settings/developers)
+2. Click "New OAuth App"
+3. Fill in:
+   - **Application name**: Your App Name
+   - **Homepage URL**: `https://yourapp.com`
+   - **Authorization callback URL**: `https://yourapp.com/auth/callback/github`
+4. Click "Register application"
+5. Copy **Client ID** and generate/copy **Client Secret**
+6. Paste into admin panel and save
+
+**User Permissions:** Email address, public profile
+
+---
+
+### Google
+
+Most popular choice, works great for general consumer applications.
+
+**Configuration:**
+- `GOOGLE_CLIENT_ID` - Google OAuth Client ID
+- `GOOGLE_CLIENT_SECRET` - Google OAuth Client Secret
+
+**How to Get Credentials:**
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select existing
+3. Enable **Google+ API**
+4. Go to **Credentials** → **Create Credentials** → **OAuth Client ID**
+5. Choose **Web application**
+6. Add authorized redirect URI: `https://yourapp.com/auth/callback/google`
+7. Copy **Client ID** and **Client Secret**
+8. Paste into admin panel and save
+
+**User Permissions:** Email, basic profile
+
+---
+
+### Twitter / X
+
+Great for social media tools, news apps, content platforms.
+
+**Configuration:**
+- `TWITTER_CLIENT_ID` - Twitter OAuth 2.0 Client ID
+- `TWITTER_CLIENT_SECRET` - Twitter OAuth 2.0 Client Secret
+
+**How to Get Credentials:**
+
+1. Go to [Twitter Developer Portal](https://developer.twitter.com/en/portal/dashboard)
+2. Create a new app or select existing
+3. Go to app settings → **User authentication settings**
+4. Enable **OAuth 2.0**
+5. Set **Type of App**: Web App
+6. Add callback URL: `https://yourapp.com/auth/callback/twitter`
+7. Copy **Client ID** and **Client Secret**
+8. Paste into admin panel and save
+
+**User Permissions:** Read user profile
+
+---
+
+### Apple
+
+Required for iOS apps, great for privacy-focused users.
+
+**Configuration:**
+- `APPLE_CLIENT_ID` - Service ID (Identifier)
+- `APPLE_CLIENT_SECRET` - Not used directly
+- `APPLE_TEAM_ID` - Your Apple Team ID
+- `APPLE_KEY_ID` - Key ID from Apple Developer
+- `APPLE_PRIVATE_KEY` - Contents of .p8 file
+
+**How to Get Credentials:**
+
+1. Go to [Apple Developer](https://developer.apple.com/)
+2. **Certificates, IDs & Profiles** → **Identifiers**
+3. Create **App ID** (if you haven't)
+4. Create **Services ID**:
+   - Identifier (Service ID): `com.yourapp.signin`
+   - Enable "Sign in with Apple"
+   - Configure Web Domain and Return URL: `https://yourapp.com/auth/callback/apple`
+5. Create **Key**:
+   - Enable "Sign in with Apple"
+   - Download the `.p8` file
+   - Note the **Key ID**
+6. Find your **Team ID** in membership details
+7. Enter all values in admin panel:
+   - Client ID = Service ID
+   - Team ID = Your Team ID
+   - Key ID = Key ID from key creation
+   - Private Key = Contents of .p8 file (open in text editor and paste)
+
+**User Permissions:** Email (optional for user), name
+
+**Note:** Apple Sign In requires HTTPS in production.
+
+---
+
+### Facebook
+
+Popular for consumer apps, social platforms, e-commerce.
+
+**Configuration:**
+- `FACEBOOK_CLIENT_ID` - Facebook App ID
+- `FACEBOOK_CLIENT_SECRET` - Facebook App Secret
+
+**How to Get Credentials:**
+
+1. Go to [Facebook Developers](https://developers.facebook.com/)
+2. Create a new app → **Consumer** type
+3. Add **Facebook Login** product
+4. Configure **Facebook Login Settings**:
+   - Valid OAuth Redirect URIs: `https://yourapp.com/auth/callback/facebook`
+5. Go to **Settings** → **Basic**
+6. Copy **App ID** (Client ID) and **App Secret** (Client Secret)
+7. Paste into admin panel and save
+
+**User Permissions:** Email, public profile
+
+**Note:** App must be in "Live" mode for public use. Test mode only works for app developers.
+
+## Configuring a Provider
+
+### Step-by-Step
+
+1. **Navigate** to Settings → Social Authentication
+2. **Enable** "Use Social Authentication" (if not already)
+3. **Expand** the provider section (e.g., click "GitHub")
+4. **Enter** Client ID and Client Secret
+5. For Apple: Also enter Team ID, Key ID, and Private Key
+6. **Click** "Save Changes"
+7. **Test** - Social login buttons should appear on login page
+
+### Visual Elements
+
+Each provider section features:
+- 🔽 **Collapsible section** - Expand to see fields
+- 👁️ **Revealable secrets** - Click eye icon to show/hide
+- ✅ **Validation** - Ensures required fields are filled
+- 💾 **Live updates** - Changes save to `.env` file
+
+## How It Works Behind the Scenes
+
+### OAuth Flow
+
+```
+User clicks "Login with GitHub"
+        ↓
+Redirect to GitHub authorization page
+        ↓
+User approves access
+        ↓
+GitHub redirects back with code
+        ↓
+App exchanges code for access token
+        ↓
+App fetches user profile from GitHub
+        ↓
+App creates or updates user account
+        ↓
+User is logged in
+```
+
+### Database Storage
+
+**User Account:**
+- Created in `users` table with provider email
+- No password set (social auth users don't need one)
+
+**Social Account Record:**
+- Stored in `social_accounts` table
+- Links user to their provider account
+- Stores encrypted OAuth token
+- **Columns**: `user_id`, `provider`, `account_id`, `token`
+
+**Model Location:** `app/Models/SocialAccount.php`
+
+### Configuration Files
+
+Social auth credentials flow through Laravel's configuration:
+
+**`.env`** → **`config/services.php`** → **OAuth Controllers**
+
+Example from `config/services.php`:
+```php
+'github' => [
+    'client_id' => env('GITHUB_CLIENT_ID'),
+    'client_secret' => env('GITHUB_CLIENT_SECRET'),
+    'redirect' => '/auth/callback/github',
+],
+```
+
+## Social Login UI Components
+
+### Where Buttons Appear
+
+Social login buttons automatically appear on:
+- ✅ Login page (`/login`)
+- ✅ Registration page (`/register`)
+
+### Button Behavior
+
+Each button:
+- Only appears if **both** Client ID and Secret are configured
+- Shows provider logo and "Continue with [Provider]" text
+- Styled consistently with your app's design
+- Located in: `resources/views/components/social/`
+
+### Customizing Buttons
+
+**Button Component Location:** `resources/views/components/social/buttons.blade.php`
+
+You can customize:
+- Button text
+- Button styling
+- Button order
+- Which buttons to show
+
+## Testing Social Login
+
+### Development Testing
+
+1. **Use ngrok or similar** for localhost OAuth:
+   ```bash
+   ngrok http 8000
+   ```
+   Use ngrok URL as callback URL in provider settings
+
+2. **Test each provider:**
+   - Click social login button
+   - Authorize on provider site
+   - Should redirect back and log you in
+   - Check user created in database
+
+3. **Test scenarios:**
+   - ✅ New user sign up
+   - ✅ Existing user sign in
+   - ✅ Link multiple providers to same account (if supported)
+
+### Production Testing
+
+1. **Update callback URLs** to production domain
+2. **Enable HTTPS** (required for Apple, recommended for all)
+3. **Test from incognito/private window**
+4. **Verify email addresses** are captured correctly
+
+## Troubleshooting
+
+### Social Buttons Not Showing
+
+**Check:**
+1. `AUTH_USE_SOCIAL_AUTH` is enabled
+2. Both Client ID **and** Secret are filled in
+3. Cache cleared: `php artisan config:clear`
+4. View the login page source - buttons should be in HTML
+
+### "Redirect URI Mismatch" Error
+
+**Solution:**
+- Ensure callback URL in provider settings matches exactly
+- Format: `https://yourapp.com/auth/callback/provider-name`
+- Check for trailing slashes
+- Verify HTTP vs HTTPS
+
+### "Invalid Client" Error
+
+**Solution:**
+- Double-check Client ID and Secret
+- Ensure no extra spaces when copying
+- Regenerate secret if needed
+- Verify app is in correct mode (test vs live)
+
+### Apple Sign In Not Working
+
+**Common Issues:**
+1. Not using HTTPS
+2. Private key not formatted correctly (should be plain text from .p8 file)
+3. Service ID doesn't match Client ID
+4. Domain not verified in Apple Developer portal
+
+### User Email Not Captured
+
+**Solution:**
+- Check provider permissions include email
+- Some providers (Apple) make email optional - request explicitly
+- Verify OAuth scopes in your provider configuration
+
+## Security Best Practices
+
+### Protecting Secrets
+
+1. **Never commit** Client Secrets to version control
+2. **Use different credentials** for dev/staging/production
+3. **Rotate secrets regularly** (every 6-12 months)
+4. **Revoke** immediately if compromised
+
+### User Privacy
+
+1. **Request minimum permissions** - Only what you need
+2. **Display privacy policy** - Link on login page
+3. **Allow unlinking** - Let users disconnect providers
+4. **Secure tokens** - Social tokens are encrypted in database
+
+### Access Control
+
+1. **Verify email domains** - Restrict to certain domains if needed
+2. **Check provider responses** - Validate data before trusting
+3. **Rate limiting** - Prevent OAuth abuse
+4. **Monitor** - Watch for suspicious OAuth activity
+
+## Advanced Configuration
+
+### Email Verification with Social Auth
+
+By default, social auth users are considered verified (provider verified their email).
+
+To require additional verification:
+**Location:** `app/Http/Controllers/SocialAuthController.php`
+
+### Multiple Accounts Per User
+
+Users can link multiple providers to one account. The `social_accounts` table stores all connections.
+
+### Custom OAuth Scopes
+
+To request additional permissions from providers, modify scopes in:
+**Location:** `config/services.php`
+
+Example:
+```php
+'github' => [
+    'client_id' => env('GITHUB_CLIENT_ID'),
+    'client_secret' => env('GITHUB_CLIENT_SECRET'),
+    'redirect' => '/auth/callback/github',
+    'scopes' => ['user:email', 'read:user'],  // Custom scopes
+],
+```
+
+## Next Steps
+
+- [General Settings](/multi-tenancy/settings/general-settings) - Configure core app settings
+- [Environment Management](/multi-tenancy/settings/environment-management) - Advanced .env configuration

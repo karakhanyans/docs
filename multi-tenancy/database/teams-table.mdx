@@ -1,0 +1,185 @@
+---
+title: Teams Table
+description: The core tenant table schema
+icon: 'table'
+---
+
+## Overview
+
+The `teams` table is the foundation of the multi-tenancy system. Each team represents a tenant in your application.
+
+## Schema
+
+```php
+Schema::create('teams', function (Blueprint $table) {
+    $table->id();
+    $table->string('name');
+    $table->text('description')->nullable();
+    $table->foreignId('owner_id')->constrained('users')->cascadeOnDelete();
+    $table->timestamps();
+});
+```
+
+## Columns
+
+### `id` (Primary Key)
+- **Type**: BIGINT UNSIGNED
+- **Description**: Unique identifier for the team
+- **Auto-increment**: Yes
+
+### `name`
+- **Type**: VARCHAR(255)
+- **Description**: Team name (e.g., "Acme Corporation")
+- **Required**: Yes
+- **Example**: "Marketing Agency", "Development Team"
+
+### `description`
+- **Type**: TEXT
+- **Description**: Optional team description
+- **Required**: No
+- **Example**: "Our main development team"
+
+### `owner_id`
+- **Type**: BIGINT UNSIGNED
+- **Description**: Foreign key to the user who owns this team
+- **Required**: Yes
+- **Constraints**:
+  - Foreign key to `users.id`
+  - Cascade on delete (if owner is deleted, team is deleted)
+
+### `created_at` / `updated_at`
+- **Type**: TIMESTAMP
+- **Description**: Laravel timestamps
+- **Automatically managed**: Yes
+
+## Relationships
+
+### Owner (BelongsTo)
+Each team belongs to one owner:
+
+```php
+public function owner(): BelongsTo
+{
+    return $this->belongsTo(User::class, 'owner_id');
+}
+```
+
+### Users/Members (BelongsToMany)
+Teams have many members through the `team_user` pivot table:
+
+```php
+public function users(): BelongsToMany
+{
+    return $this->belongsToMany(User::class)
+        ->withTimestamps();
+}
+```
+
+## Usage Examples
+
+### Creating a Team
+
+```php
+use App\Models\Team;
+
+$team = Team::create([
+    'name' => 'Acme Corporation',
+    'description' => 'Our main business team',
+    'owner_id' => auth()->id(),
+]);
+```
+
+### Querying Teams
+
+```php
+// Get all teams
+$teams = Team::all();
+
+// Get teams owned by a user
+$ownedTeams = Team::where('owner_id', $userId)->get();
+
+// Get team with members
+$team = Team::with('users')->find(1);
+
+// Check if user owns team
+$isOwner = $team->owner_id === auth()->id();
+```
+
+### Updating a Team
+
+```php
+$team = Team::find(1);
+
+$team->update([
+    'name' => 'New Team Name',
+    'description' => 'Updated description',
+]);
+```
+
+### Deleting a Team
+
+```php
+$team = Team::find(1);
+$team->delete(); // Cascades to team_user records
+```
+
+## Indexes
+
+Consider adding these indexes for better performance:
+
+```php
+Schema::table('teams', function (Blueprint $table) {
+    $table->index('owner_id');
+    $table->index('created_at');
+});
+```
+
+## Optional Enhancements
+
+### Adding a Slug
+
+For prettier URLs:
+
+```php
+Schema::table('teams', function (Blueprint $table) {
+    $table->string('slug')->unique()->after('name');
+});
+```
+
+```php
+// In Team model
+public function getRouteKeyName()
+{
+    return 'slug';
+}
+```
+
+### Adding Team Settings
+
+Store team-specific settings as JSON:
+
+```php
+Schema::table('teams', function (Blueprint $table) {
+    $table->json('settings')->nullable();
+});
+```
+
+```php
+// In Team model
+protected $casts = [
+    'settings' => 'array',
+];
+```
+
+### Adding Team Logo
+
+```php
+Schema::table('teams', function (Blueprint $table) {
+    $table->string('logo_path')->nullable();
+});
+```
+
+## Next Steps
+
+- [Team User Table](/multi-tenancy/database/team-user-table) - Managing team memberships
+- [Team Model](/multi-tenancy/teams/team-model) - Working with the Team model
