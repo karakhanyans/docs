@@ -1,0 +1,366 @@
+---
+title: DNS Configuration
+description: Configure DNS records for custom domains
+icon: 'network-wired'
+---
+
+## DNS Requirements
+
+For custom domains to work with Larafast Multi-Tenancy, proper DNS configuration is essential. The system automatically verifies DNS records before provisioning sites and SSL certificates.
+
+## DNS Record Types
+
+### A Record (IPv4)
+
+The most common configuration is to point your custom domain directly to your server's IP address using an A record.
+
+**Example:**
+```
+Type: A
+Name: app (or @ for root domain)
+Value: 203.0.113.42
+TTL: 3600
+```
+
+This creates:
+- `app.yourdomain.com` → `203.0.113.42`
+- Or `yourdomain.com` → `203.0.113.42` (if using @)
+
+### AAAA Record (IPv6)
+
+If your server has an IPv6 address, you should also configure an AAAA record:
+
+```
+Type: AAAA
+Name: app
+Value: 2001:0db8:85a3:0000:0000:8a2e:0370:7334
+TTL: 3600
+```
+
+### CNAME Record
+
+Alternatively, you can use a CNAME record to point to your main domain or server hostname:
+
+```
+Type: CNAME
+Name: app
+Value: yourmainapp.com
+TTL: 3600
+```
+
+<Warning>
+CNAME records cannot be used for root domains (e.g., `yourdomain.com`). Use A records for root domains.
+</Warning>
+
+## DNS Configuration by Provider
+
+### Cloudflare
+
+1. Log in to your Cloudflare dashboard
+2. Select your domain
+3. Navigate to **DNS** → **Records**
+4. Click **Add record**
+5. Configure:
+   - **Type**: A
+   - **Name**: app (or your subdomain)
+   - **IPv4 address**: Your server IP
+   - **Proxy status**: DNS only (orange cloud OFF)
+   - **TTL**: Auto
+6. Click **Save**
+
+<Warning>
+When using Cloudflare, ensure "Proxy status" is set to **DNS only** (gray cloud). The orange cloud (proxied) can interfere with SSL provisioning.
+</Warning>
+
+### DigitalOcean
+
+1. Log in to your DigitalOcean account
+2. Navigate to **Networking** → **Domains**
+3. Select your domain or add a new one
+4. Under **Add a record**, select:
+   - **Type**: A
+   - **Hostname**: app
+   - **Will Direct To**: Your server IP
+   - **TTL**: 3600
+5. Click **Create Record**
+
+### AWS Route 53
+
+1. Log in to AWS Console
+2. Navigate to **Route 53** → **Hosted Zones**
+3. Select your domain
+4. Click **Create Record**
+5. Configure:
+   - **Record name**: app
+   - **Record type**: A
+   - **Value**: Your server IP
+   - **TTL**: 300
+   - **Routing policy**: Simple routing
+6. Click **Create records**
+
+### Namecheap
+
+1. Log in to Namecheap
+2. Go to **Domain List** → Select your domain
+3. Click **Manage** → **Advanced DNS**
+4. Click **Add New Record**
+5. Configure:
+   - **Type**: A Record
+   - **Host**: app
+   - **Value**: Your server IP
+   - **TTL**: Automatic
+6. Click the checkmark to save
+
+### GoDaddy
+
+1. Log in to GoDaddy
+2. Go to **My Products** → **Domains**
+3. Click **DNS** next to your domain
+4. Under **Records**, click **Add**
+5. Configure:
+   - **Type**: A
+   - **Name**: app
+   - **Value**: Your server IP
+   - **TTL**: 1 Hour
+6. Click **Save**
+
+### Google Domains
+
+1. Log in to Google Domains
+2. Select your domain
+3. Click **DNS** on the left sidebar
+4. Scroll to **Custom resource records**
+5. Add a new record:
+   - **Name**: app
+   - **Type**: A
+   - **TTL**: 1H
+   - **Data**: Your server IP
+6. Click **Add**
+
+## DNS Verification Process
+
+When a team adds a custom domain, Larafast Multi-Tenancy automatically verifies DNS configuration:
+
+### 1. DNS Lookup
+
+The system performs DNS lookups to verify the domain points to your server:
+
+```php
+// Example of what the system checks
+$dnsRecords = dns_get_record('app.clientdomain.com', DNS_A);
+// Verifies if any record matches your server's IP
+```
+
+### 2. Verification Job
+
+The `VerifyDomainDnsRecordsJob` runs to check DNS:
+
+- Queries DNS records for the custom domain
+- Compares resolved IP with your server's IP
+- Updates the domain record with verification status
+- Fires `DnsVerified` event on success
+
+### 3. Retry Logic
+
+If DNS verification fails:
+- The system retries up to 3 times
+- Tracks retry attempts in `dns_verification_attempts`
+- Waits between retries for DNS propagation
+
+### 4. Automated Progression
+
+Once DNS is verified:
+1. `DnsVerified` event is fired
+2. `CreateForgeSite` listener creates a Forge site
+3. `CreateForgeSiteCertificateJob` provisions SSL certificate
+4. Team is notified when complete
+
+## DNS Propagation Time
+
+DNS changes take time to propagate across the internet:
+
+| Provider | Typical Propagation Time |
+|----------|-------------------------|
+| Cloudflare | 2-5 minutes |
+| DigitalOcean | 5-30 minutes |
+| AWS Route 53 | 1-5 minutes |
+| Namecheap | 30 minutes - 2 hours |
+| GoDaddy | 1 hour - 24 hours |
+| Google Domains | 5-30 minutes |
+
+<Tip>
+You can use tools like [whatsmydns.net](https://www.whatsmydns.net) to check DNS propagation globally.
+</Tip>
+
+## Best Practices
+
+### 1. Lower TTL Before Changes
+
+Before configuring a custom domain:
+1. Lower the DNS TTL to 300-600 seconds (5-10 minutes)
+2. Wait for the old TTL to expire
+3. Make your DNS changes
+4. After verification, you can increase TTL back to 3600 (1 hour)
+
+### 2. Use Subdomains
+
+Prefer subdomains over root domains:
+- ✅ `app.clientdomain.com` (subdomain)
+- ❌ `clientdomain.com` (root domain)
+
+Subdomains are more flexible and can use CNAME records.
+
+### 3. Disable Proxying
+
+If using Cloudflare or similar CDN:
+- Disable the proxy (orange cloud) during initial setup
+- Enable it after SSL is active (optional)
+
+### 4. Check Before Adding
+
+Advise your users to:
+1. Configure DNS records first
+2. Wait 5-10 minutes for propagation
+3. Then add the domain in your application
+
+## Monitoring DNS Status
+
+### Check Domain Status
+
+Use the Filament admin panel to check domain status:
+
+```php
+// In your TeamResource or custom page
+Forms\Components\Placeholder::make('domain_status')
+    ->content(function ($record) {
+        if (!$record->domain) {
+            return 'No domain configured';
+        }
+
+        $domain = $record->domains()->where('domain', $record->domain)->first();
+
+        if (!$domain) {
+            return '⏳ Pending DNS verification';
+        }
+
+        if (!$domain->dns_verified) {
+            return "❌ DNS not verified (Attempts: {$domain->dns_verification_attempts})";
+        }
+
+        if (!$domain->ssl_installed) {
+            return '⏳ SSL certificate being installed';
+        }
+
+        if (!$domain->ssl_active) {
+            return '⏳ SSL certificate being activated';
+        }
+
+        return '✅ Domain active and secure';
+    })
+```
+
+### Manual DNS Check
+
+Check DNS records manually using command line:
+
+```bash
+# Check A records
+dig +short app.clientdomain.com A
+
+# Check with specific nameserver
+dig @8.8.8.8 app.clientdomain.com A
+
+# Detailed DNS query
+nslookup app.clientdomain.com
+```
+
+### Monitor Verification Attempts
+
+Query the database to see verification status:
+
+```bash
+php artisan tinker
+```
+
+```php
+// Get all pending verifications
+\App\Models\Domain::where('dns_verified', false)->get();
+
+// Get domains with multiple failed attempts
+\App\Models\Domain::where('dns_verification_attempts', '>', 3)->get();
+```
+
+## Troubleshooting DNS Issues
+
+### DNS Not Resolving
+
+**Problem**: DNS lookups return no results.
+
+**Solution**:
+1. Verify the DNS record was created correctly
+2. Check for typos in the domain name
+3. Wait for DNS propagation (5-30 minutes)
+4. Use `dig` or `nslookup` to verify
+
+### Wrong IP Address
+
+**Problem**: DNS resolves to wrong IP address.
+
+**Solution**:
+1. Update DNS record with correct IP
+2. Lower TTL for faster propagation
+3. Clear local DNS cache: `sudo dscacheutil -flushcache` (macOS)
+4. Wait for propagation
+
+### Cloudflare Proxy Issues
+
+**Problem**: DNS verification fails with Cloudflare.
+
+**Solution**:
+1. Click the orange cloud to make it gray (DNS only)
+2. Wait 2-5 minutes for changes to propagate
+3. Retry verification
+
+### Multiple A Records
+
+**Problem**: Domain has multiple conflicting A records.
+
+**Solution**:
+1. Remove old/incorrect A records
+2. Keep only the record pointing to your server
+3. Wait for DNS propagation
+
+## Advanced: Wildcard Domains
+
+If you want to support wildcard domains (e.g., `*.clientdomain.com`):
+
+### DNS Configuration
+
+```
+Type: A
+Name: *
+Value: Your server IP
+TTL: 3600
+```
+
+This allows any subdomain to work:
+- `app.clientdomain.com`
+- `portal.clientdomain.com`
+- `anything.clientdomain.com`
+
+### Server Configuration
+
+On your Forge server, you'll need to:
+1. Configure Nginx to handle wildcard domains
+2. Use wildcard SSL certificates
+3. Adjust your application routing logic
+
+<Warning>
+Wildcard domain support requires additional configuration beyond the standard custom domains setup.
+</Warning>
+
+## Next Steps
+
+- [SSL Certificates](/multi-tenancy/custom-domains/ssl-certificates) - Understand SSL certificate automation
+- [Troubleshooting](/multi-tenancy/custom-domains/troubleshooting) - Common issues and solutions
+- [API Reference](/multi-tenancy/custom-domains/api-reference) - Programmatic domain management

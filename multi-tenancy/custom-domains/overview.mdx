@@ -1,0 +1,126 @@
+---
+title: Custom Domains Overview
+description: Allow teams to use their own custom domains with automated SSL certificate provisioning
+icon: 'globe'
+---
+
+## What are Custom Domains?
+
+Custom domains in **Larafast Multi-Tenancy** allow each team (tenant) to access their workspace through their own branded domain instead of a shared application domain. This feature is essential for white-label SaaS applications where customers want their own identity and branding.
+
+## Why Use Custom Domains?
+
+### Professional Branding
+Instead of accessing your application at `app.yourapp.com/team/acme`, teams can use their own domain like `app.acme.com` or `portal.acme.com`, providing a professional, branded experience.
+
+### White-Label Solutions
+Perfect for agencies and businesses that want to offer your platform under their own brand without any visible connection to your main application.
+
+### SEO Benefits
+Custom domains help teams maintain their own domain authority and search engine rankings rather than contributing to your shared domain.
+
+### Trust and Credibility
+Customers often trust applications more when they can access them through their own verified domain with SSL certificates.
+
+## Use Cases
+
+### 1. **Agency Portals**
+Marketing agencies can provide each client with their own branded portal:
+- `portal.clienta.com` for Client A
+- `dashboard.clientb.com` for Client B
+- Each client sees only their branding and domain
+
+### 2. **Multi-Brand Businesses**
+Companies managing multiple brands can give each brand its own domain:
+- `admin.brandx.com` for Brand X management
+- `portal.brandy.com` for Brand Y operations
+
+### 3. **Franchise Management**
+Franchisors can provide each franchisee with their own management portal:
+- `manage.franchise-location1.com`
+- `manage.franchise-location2.com`
+
+### 4. **Education Platforms**
+Educational institutions can have their own learning portals:
+- `lms.university-a.edu`
+- `courses.school-b.edu`
+
+### 5. **Customer Success Portals**
+B2B companies can provide each enterprise customer with a dedicated portal:
+- `support.enterprise-a.com`
+- `hub.enterprise-b.com`
+
+## How It Works
+
+The custom domains feature in Larafast Multi-Tenancy provides a complete automated workflow:
+
+### 1. Domain Configuration
+Team owners can configure their custom domain through the team settings panel in your Filament admin interface.
+
+### 2. DNS Verification
+The system automatically verifies that the domain's DNS records are properly configured to point to your application's server.
+
+### 3. Site Provisioning
+Once DNS is verified, the system automatically creates a new site on your Laravel Forge server using the Forge API.
+
+### 4. SSL Certificate Generation
+The system automatically provisions a Let's Encrypt SSL certificate using DigitalOcean DNS validation, ensuring secure HTTPS connections.
+
+### 5. Certificate Activation
+Once the certificate is issued, it's automatically activated on the Forge site, making the custom domain fully operational.
+
+## Architecture
+
+The custom domains feature is built with a robust event-driven architecture:
+
+### Models
+- **Team Model**: Stores the primary domain information (`domain`, `domain_verified`, `forge_site_id`, `forge_certificate_id`)
+- **Domain Model**: Tracks detailed domain information including DNS verification status, SSL installation status, and history
+
+### Events & Listeners
+- **DnsVerified Event**: Fired when DNS records are successfully verified
+- **ForgeSiteCreated Event**: Fired when a Forge site is created
+- **CreateForgeSite Listener**: Listens for DNS verification and triggers site creation
+- **CreateForgeSiteCertificate Listener**: Listens for site creation and triggers SSL certificate provisioning
+
+### Background Jobs
+- **VerifyDomainDnsRecordsJob**: Checks if DNS records are properly configured
+- **CreateForgeSiteJob**: Creates a new site on Laravel Forge
+- **CreateForgeSiteCertificateJob**: Provisions and activates SSL certificates
+
+### Services
+- **ForgeService**: Handles all Laravel Forge API interactions including site management, SSL certificates, and Nginx configuration
+
+### Console Commands
+- **CheckCustomDomainSetup**: Runs periodically (via scheduler) to monitor and complete pending domain setups
+
+## Requirements
+
+To use the custom domains feature, you need:
+
+1. **Laravel Forge Account** - For automated server and site management
+2. **DigitalOcean Account** - For DNS validation during SSL certificate provisioning
+3. **Configured Server** - A Laravel Forge server where sites will be created
+4. **Queue Worker** - Running to process background jobs
+5. **Scheduler** - Running to check domain setup status periodically
+
+## Security Considerations
+
+### DNS Verification
+Before creating sites or certificates, the system verifies that teams actually own the domains they're configuring by checking DNS records.
+
+### SSL/TLS Encryption
+All custom domains automatically receive Let's Encrypt SSL certificates, ensuring secure communications.
+
+### Isolation
+Each team's custom domain is isolated at the Forge site level, with separate Nginx configurations and certificates.
+
+### Rate Limiting
+The system includes retry logic and limits to prevent abuse of the Forge API and Let's Encrypt certificate limits.
+
+## Next Steps
+
+- [Setup Guide](/multi-tenancy/custom-domains/setup-guide) - Configure the custom domains feature
+- [DNS Configuration](/multi-tenancy/custom-domains/dns-configuration) - Learn about DNS requirements
+- [SSL Certificates](/multi-tenancy/custom-domains/ssl-certificates) - Understand SSL automation
+- [Troubleshooting](/multi-tenancy/custom-domains/troubleshooting) - Common issues and solutions

@@ -268,6 +268,15 @@
       ]
     },
     {
+      "group": "Custom Domains",
+      "pages": [
+        "multi-tenancy/custom-domains/overview",
+        "multi-tenancy/custom-domains/setup-guide",
+        "multi-tenancy/custom-domains/dns-configuration",
+        "multi-tenancy/custom-domains/ssl-certificates"
+      ]
+    },
+    {
       "group": "Pricing & Subscriptions",
       "pages": [
         "multi-tenancy/pricing/overview",

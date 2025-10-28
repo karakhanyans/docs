@@ -1,0 +1,440 @@
+---
+title: SSL Certificates
+description: Automated SSL certificate provisioning and management for custom domains
+icon: 'lock'
+---
+
+## Overview
+
+Larafast Multi-Tenancy automatically provisions and manages SSL/TLS certificates for all custom domains using **Let's Encrypt** and **DigitalOcean DNS validation**. This ensures all custom domains are secure with HTTPS from day one.
+
+## How SSL Automation Works
+
+### 1. DNS Verification
+
+Before requesting an SSL certificate, the system verifies that:
+- DNS records are properly configured
+- The domain resolves to your server's IP
+- The domain is under your control
+
+### 2. Forge Site Creation
+
+Once DNS is verified:
+- A new site is created on your Laravel Forge server
+- The site is configured with proper Nginx settings
+- The domain is added to the site configuration
+
+### 3. Certificate Request
+
+The system automatically requests a Let's Encrypt certificate:
+- Uses DigitalOcean DNS validation (not HTTP validation)
+- Supports wildcard certificates if needed
+- Handles DNS TXT record creation automatically
+
+### 4. Certificate Installation
+
+After Let's Encrypt issues the certificate:
+- Certificate is installed on the Forge site
+- Nginx configuration is updated
+- HTTPS is enabled automatically
+
+### 5. Certificate Activation
+
+Finally, the certificate is activated:
+- Set as the active certificate for the domain
+- HTTP to HTTPS redirect is enabled
+- Domain becomes fully operational
+
+## Certificate Workflow
+
+The complete SSL workflow is handled by background jobs:
+
+```
+Team adds domain
+    ↓
+DNS Verification Job
+    ↓ (DNS Verified Event)
+Create Forge Site Job
+    ↓ (Forge Site Created Event)
+Create Certificate Job
+    ↓
+Certificate Active ✅
+```
+
+### Key Components
+
+#### CreateForgeSiteCertificateJob
+
+This job handles the entire certificate lifecycle:
+
+```php
+// Pseudo-code of the job's logic
+1. Check if certificate already exists
+2. If exists and installed:
+   - Update domain record
+   - Activate if needed
+   - Send success notification
+3. If not exists:
+   - Request new Let's Encrypt certificate
+   - Use DigitalOcean DNS validation
+   - Track installation progress
+```
+
+#### Certificate Status Tracking
+
+The `domains` table tracks certificate status:
+
+```php
+$domain->ssl_installed      // Boolean: Certificate installed
+$domain->ssl_active         // Boolean: Certificate active
+$domain->ssl_installed_at   // DateTime: When installed
+$domain->forge_certificate_id  // Forge certificate ID
+```
+
+## Let's Encrypt Certificates
+
+### Certificate Details
+
+Let's Encrypt certificates provided by this system:
+
+- **Issuer**: Let's Encrypt Authority
+- **Validity**: 90 days
+- **Renewal**: Automatic via Laravel Forge
+- **Type**: Domain Validated (DV)
+- **Encryption**: RSA 2048-bit or ECDSA
+- **Trust**: Trusted by all major browsers
+
+### Rate Limits
+
+Let's Encrypt has rate limits to prevent abuse:
+
+| Limit Type | Limit | Period |
+|------------|-------|--------|
+| Certificates per Domain | 50 | 7 days |
+| Duplicate Certificates | 5 | 7 days |
+| Failed Validations | 5 | 1 hour |
+| Accounts per IP | 10 | 3 hours |
+
+<Warning>
+Be mindful of Let's Encrypt rate limits when testing. Use staging certificates during development.
+</Warning>
+
+## DNS Validation with DigitalOcean
+
+### Why DNS Validation?
+
+The system uses DNS validation instead of HTTP validation because:
+
+1. **Works Before Site is Live**: Can provision certificates before the site is fully configured
+2. **No Downtime**: Doesn't require the site to be accessible
+3. **Wildcard Support**: Enables wildcard certificates if needed
+4. **More Reliable**: No dependency on HTTP server configuration
+
+### How It Works
+
+1. **Certificate Request**: System requests certificate from Let's Encrypt
+2. **Challenge**: Let's Encrypt provides a DNS challenge
+3. **TXT Record**: System creates TXT record via DigitalOcean API
+4. **Verification**: Let's Encrypt verifies TXT record exists
+5. **Issuance**: Certificate is issued and downloaded
+
+### DigitalOcean Requirements
+
+For DNS validation to work:
+
+- Domain's nameservers must point to DigitalOcean
+- DigitalOcean API token must have read/write permissions
+- Domain must be added to your DigitalOcean account
+
+<Tip>
+If your domain is not on DigitalOcean DNS, you can configure Laravel Forge to use HTTP validation instead. This requires modifying the ForgeService to use different certificate request endpoints.
+</Tip>
+
+## Certificate Management
+
+### Automatic Renewal
+
+Laravel Forge automatically handles certificate renewal:
+
+- Certificates are checked daily
+- Renewed 30 days before expiration
+- No manual intervention required
+- Teams are notified if renewal fails
+
+### Certificate Installation Timeline
+
+Typical timeline for certificate installation:
+
+1. **Domain Added**: Immediate
+2. **DNS Verification**: 5-30 minutes (depends on DNS propagation)
+3. **Site Creation**: 1-2 minutes
+4. **Certificate Request**: 2-5 minutes
+5. **Certificate Installation**: 1-2 minutes
+6. **Total Time**: ~10-40 minutes
+
+### Monitoring Certificate Status
+
+Check certificate status via the admin panel:
+
+```php
+// Get domain with certificate details
+$domain = Domain::where('domain', 'app.clientdomain.com')->first();
+
+// Check status
+if ($domain->ssl_active && $domain->ssl_installed) {
+    echo "✅ Certificate active and working";
+} elseif ($domain->ssl_installed && !$domain->ssl_active) {
+    echo "⏳ Certificate installed, activating...";
+} elseif (!$domain->ssl_installed) {
+    echo "⏳ Certificate being provisioned...";
+}
+```
+
+### Manual Certificate Check
+
+Use the artisan command to check and fix certificate issues:
+
+```bash
+php artisan app:check-custom-domain-setup
+```
+
+This command:
+- Checks all domains with pending certificate installations
+- Retries failed certificate requests
+- Activates installed but inactive certificates
+- Logs all actions for debugging
+
+## Troubleshooting
+
+### Certificate Not Installing
+
+**Problem**: Certificate stays in "pending installation" state.
+
+**Possible Causes**:
+1. DigitalOcean API token invalid or lacks permissions
+2. Domain not on DigitalOcean DNS
+3. DNS TXT record propagation delays
+4. Let's Encrypt rate limits reached
+
+**Solution**:
+```bash
+# Check the logs
+tail -f storage/logs/laravel.log | grep -i certificate
+
+# Manually check certificate status on Forge
+# Visit: https://forge.laravel.com/servers/{SERVER_ID}/sites/{SITE_ID}/certificates
+
+# Retry certificate provisioning
+php artisan app:check-custom-domain-setup
+```
+
+### Certificate Validation Failed
+
+**Problem**: Certificate request fails with validation errors.
+
+**Solution**:
+1. Verify DigitalOcean token: `FORGE_DIGITALOCEAN_TOKEN`
+2. Ensure domain uses DigitalOcean nameservers
+3. Check Let's Encrypt rate limits
+4. Review Forge logs for detailed error messages
+
+### Multiple Certificates
+
+**Problem**: Multiple certificates exist for same domain.
+
+**Solution**:
+```php
+// Check certificates via ForgeService
+$forge = app(\App\Services\ForgeService::class);
+$certificates = $forge->certificates($siteId);
+
+// Delete old/inactive certificates
+foreach ($certificates as $cert) {
+    if (!$cert['active']) {
+        $forge->deleteCertificate($siteId, $cert['id']);
+    }
+}
+```
+
+### Certificate Not Activated
+
+**Problem**: Certificate is installed but not active.
+
+**Solution**:
+```bash
+# Run the check command
+php artisan app:check-custom-domain-setup
+
+# Or manually via tinker
+$forge = app(\App\Services\ForgeService::class);
+$forge->activateCertificate($siteId, $certificateId);
+```
+
+### DNS Validation Issues
+
+**Problem**: DNS validation keeps failing.
+
+**Solution**:
+1. Verify domain is on DigitalOcean DNS
+2. Check DigitalOcean DNS records:
+   ```bash
+   dig @ns1.digitalocean.com app.clientdomain.com
+   ```
+3. Ensure API token has correct permissions
+4. Check if domain is in DigitalOcean account
+
+## Security Best Practices
+
+### 1. Secure API Tokens
+
+Store API tokens securely:
+
+```bash
+# Use strong environment variable protection
+chmod 600 .env
+
+# Never commit .env to version control
+echo ".env" >> .gitignore
+
+# Use Laravel's encryption for sensitive data
+php artisan env:encrypt
+```
+
+### 2. Certificate Monitoring
+
+Monitor certificate expiration:
+
+```php
+// In your monitoring system
+$domains = Domain::where('ssl_active', true)->get();
+
+foreach ($domains as $domain) {
+    if ($domain->ssl_installed_at < now()->subDays(60)) {
+        // Certificate is getting old, should have been renewed
+        Log::warning("Certificate may need renewal", [
+            'domain' => $domain->domain,
+            'installed_at' => $domain->ssl_installed_at,
+        ]);
+    }
+}
+```
+
+### 3. HTTPS Enforcement
+
+Ensure all custom domains enforce HTTPS:
+
+```php
+// In your middleware or AppServiceProvider
+if (request()->getHost() !== config('app.url')) {
+    // This is a custom domain
+    if (!request()->secure()) {
+        return redirect()->secure(request()->getRequestUri());
+    }
+}
+```
+
+### 4. HSTS Headers
+
+Add HTTP Strict Transport Security headers:
+
+```nginx
+# In Forge Nginx template
+add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+```
+
+## Certificate Types
+
+### Standard SSL Certificate
+
+Default for most custom domains:
+- Single domain (e.g., `app.clientdomain.com`)
+- 90-day validity
+- Automatic renewal
+- Free via Let's Encrypt
+
+### Wildcard SSL Certificate
+
+For supporting all subdomains:
+- Covers `*.clientdomain.com`
+- Requires DNS validation
+- More complex setup
+- Free via Let's Encrypt
+
+<Note>
+Wildcard certificates require additional configuration and are not enabled by default.
+</Note>
+
+## Advanced Configuration
+
+### Using Different Certificate Authority
+
+To use a different CA instead of Let's Encrypt:
+
+1. Obtain certificate from your CA
+2. Upload to Forge manually
+3. Update domain record with certificate ID
+4. Disable automatic certificate provisioning for that domain
+
+### Custom Certificate Installation
+
+For teams that want to use their own certificates:
+
+```php
+// Modify CreateForgeSiteCertificateJob
+if ($team->has_custom_certificate) {
+    // Skip automatic provisioning
+    return;
+}
+
+// Or create a custom endpoint for certificate upload
+```
+
+### Staging Certificates
+
+During development, use Let's Encrypt staging:
+
+```php
+// In ForgeService
+$isStaging = config('app.env') !== 'production';
+
+// Use staging endpoint for testing
+$certificateType = $isStaging ? 'letsencrypt-staging' : 'letsencrypt';
+```
+
+## Notifications
+
+### Success Notifications
+
+When a certificate is successfully installed:
+
+```php
+Notification::make()
+    ->title('SSL certificate for ' . $domain . ' has been created')
+    ->body('You can now use your custom domain.')
+    ->icon('heroicon-o-check-circle')
+    ->iconColor('success')
+    ->send();
+```
+
+### Failure Notifications
+
+Set up failure notifications:
+
+```php
+// In CreateForgeSiteCertificateJob
+public function failed(\Throwable $exception): void
+{
+    Notification::make()
+        ->title('SSL certificate installation failed')
+        ->body('Domain: ' . $this->team->domain . ' - ' . $exception->getMessage())
+        ->icon('heroicon-o-exclamation-triangle')
+        ->iconColor('danger')
+        ->sendToDatabase($this->team->owner);
+}
+```
+
+## Next Steps
+
+- [Troubleshooting](/multi-tenancy/custom-domains/troubleshooting) - Common issues and solutions
+- [API Reference](/multi-tenancy/custom-domains/api-reference) - Programmatic domain management
+- [Advanced Topics](/multi-tenancy/custom-domains/advanced) - Wildcard domains, custom certificates, and more
